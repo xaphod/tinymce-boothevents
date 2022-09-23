@@ -8,6 +8,7 @@ import DomTreeWalker from '../api/dom/TreeWalker';
 import Editor from '../api/Editor';
 import * as Options from '../api/Options';
 import * as Bookmarks from '../bookmark/Bookmarks';
+import * as TransparentElements from '../content/TransparentElements';
 import * as NodeType from '../dom/NodeType';
 import * as Whitespace from '../text/Whitespace';
 import { isCaretNode } from './FormatContainer';
@@ -83,12 +84,8 @@ const getNonWhiteSpaceSibling = (node: Node | null, next?: boolean, inc?: boolea
   return undefined;
 };
 
-const isTextBlock = (editor: Editor, name: string | Node): boolean => {
-  if (isNode(name)) {
-    name = name.nodeName;
-  }
-
-  return !!editor.schema.getTextBlockElements()[name.toLowerCase()];
+const isTextBlock = (editor: Editor, node: Node): boolean => {
+  return !!editor.schema.getTextBlockElements()[node.nodeName.toLowerCase()] || TransparentElements.isTransparentBlock(editor.schema, node);
 };
 
 const isValid = (ed: Editor, parent: string, child: string): boolean => {

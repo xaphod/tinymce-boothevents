@@ -4,7 +4,6 @@ import { Insert, SugarElement } from '@ephox/sugar';
 import Editor from './api/Editor';
 import { SchemaMap } from './api/html/Schema';
 import * as Options from './api/Options';
-import Tools from './api/util/Tools';
 import * as Bookmarks from './bookmark/Bookmarks';
 import * as NodeType from './dom/NodeType';
 import * as PaddingBr from './dom/PaddingBr';
@@ -57,7 +56,7 @@ const createRootBlock = (editor: Editor): HTMLElement =>
 const addRootBlocks = (editor: Editor) => {
   const dom = editor.dom, selection = editor.selection;
   const schema = editor.schema;
-  const blockElements = Tools.extend(schema.getBlockElements(), schema.getTransparentElements());
+  const blockElements = { ...schema.getBlockElements(), ...schema.getTransparentElements() };
   const startNode = selection.getStart();
   const rootNode = editor.getBody();
   let rootBlockNode: Node | undefined | null;

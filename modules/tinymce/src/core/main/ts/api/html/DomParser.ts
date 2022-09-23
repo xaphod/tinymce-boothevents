@@ -2,6 +2,7 @@ import { Arr, Fun, Obj, Strings, Type } from '@ephox/katamari';
 import { Attribute, NodeTypes, Remove, Replication, SugarElement } from '@ephox/sugar';
 import createDompurify, { Config, DOMPurifyI } from 'dompurify';
 
+import * as TransparentElements from '../../content/TransparentElements';
 import * as NodeType from '../../dom/NodeType';
 import * as FilterNode from '../../html/FilterNode';
 import * as FilterRegistry from '../../html/FilterRegistry';
@@ -316,6 +317,8 @@ const whitespaceCleaner = (root: AstNode, schema: Schema, settings: DomParserSet
     return false;
   };
 
+  const isBlock = (node: AstNode) => node.name in blockElements && !TransparentElements.isTransparentAstInline(schema, node);
+
   const isAtEdgeOfBlock = (node: AstNode, start: boolean): boolean => {
     const neighbour = start ? node.prev : node.next;
     if (Type.isNonNullable(neighbour) || Type.isNullable(node.parent)) {
@@ -324,7 +327,7 @@ const whitespaceCleaner = (root: AstNode, schema: Schema, settings: DomParserSet
 
     // Make sure our parent is actually a block, and also make sure it isn't a temporary "context" element
     // that we're probably going to unwrap as soon as we insert this content into the editor
-    return node.parent.name in blockElements && (node.parent !== root || args.isRootContent === true);
+    return isBlock(node.parent) && (node.parent !== root || args.isRootContent === true);
   };
 
   const preprocess = (node: AstNode) => {
@@ -334,7 +337,7 @@ const whitespaceCleaner = (root: AstNode, schema: Schema, settings: DomParserSet
         let text = node.value ?? '';
         text = text.replace(allWhiteSpaceRegExp, ' ');
 
-        if (isLineBreakNode(node.prev, blockElements) || isAtEdgeOfBlock(node, true)) {
+        if (isLineBreakNode(node.prev, isBlock) || isAtEdgeOfBlock(node, true)) {
           text = text.replace(startWhiteSpaceRegExp, '');
         }
 
@@ -355,22 +358,22 @@ const whitespaceCleaner = (root: AstNode, schema: Schema, settings: DomParserSet
         const isNodeEmpty = isEmpty(schema, nonEmptyElements, whitespaceElements, node);
 
         if (elementRule.paddInEmptyBlock && isNodeEmpty && isTextRootBlockEmpty(node)) {
-          paddEmptyNode(settings, args, blockElements, node);
+          paddEmptyNode(args, isBlock, node);
         } else if (elementRule.removeEmpty && isNodeEmpty) {
-          if (blockElements[node.name]) {
+          if (isBlock(node)) {
             node.remove();
           } else {
             node.unwrap();
           }
         } else if (elementRule.paddEmpty && (isNodeEmpty || isPaddedWithNbsp(node))) {
-          paddEmptyNode(settings, args, blockElements, node);
+          paddEmptyNode(args, isBlock, node);
         }
       }
     } else if (node.type === 3) {
       // Removing trailing whitespace here, so that all whitespace in nodes to the right of us has already been fixed
       if (!hasWhitespaceParent(node)) {
         let text = node.value ?? '';
-        if (node.next && blockElements[node.next.name] || isAtEdgeOfBlock(node, false)) {
+        if (node.next && isBlock(node.next) || isAtEdgeOfBlock(node, false)) {
           text = text.replace(endWhiteSpaceRegExp, '');
         }
 
@@ -569,6 +572,8 @@ const DomParser = (settings: DomParserSettings = {}, schema = Schema()): DomPars
 
     // Parse and sanitize the content
     const element = parseAndSanitizeWithContext(html, rootName, args.format);
+
+    TransparentElements.update(schema, element, args.context ?? 'body');
 
     // Create the AST representation
     const rootNode = new AstNode(rootName, 11);

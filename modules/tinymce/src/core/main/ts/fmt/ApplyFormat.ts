@@ -130,10 +130,10 @@ const applyFormat = (ed: Editor, name: string, vars?: FormatVars, node?: Node | 
     const isMatchingWrappingBlock = (node: Node) =>
       FormatUtils.isWrappingBlockFormat(format) && MatchFormat.matchNode(ed, node, name, vars);
 
-    const canRenameBlock = (nodeName: string, parentName: string, isEditableDescendant: boolean) => {
+    const canRenameBlock = (node: Node, parentName: string, isEditableDescendant: boolean) => {
       const isValidBlockFormatForNode =
             FormatUtils.isNonWrappingBlockFormat(format) &&
-            FormatUtils.isTextBlock(ed, nodeName) &&
+            FormatUtils.isTextBlock(ed, node) &&
             FormatUtils.isValid(ed, parentName, wrapName);
       return isEditableDescendant && isValidBlockFormatForNode;
     };
@@ -159,7 +159,6 @@ const applyFormat = (ed: Editor, name: string, vars?: FormatVars, node?: Node | 
         let hasContentEditableState = false;
         let lastContentEditable = contentEditable;
         let isWrappableNoneditableElm = false;
-        const nodeName = node.nodeName.toLowerCase();
         const parentNode = node.parentNode as Node;
         const parentName = parentNode.nodeName.toLowerCase();
 
@@ -189,7 +188,7 @@ const applyFormat = (ed: Editor, name: string, vars?: FormatVars, node?: Node | 
           return;
         }
 
-        if (canRenameBlock(nodeName, parentName, isEditableDescendant)) {
+        if (canRenameBlock(node, parentName, isEditableDescendant)) {
           const elm = dom.rename(node as Element, wrapName);
           setElementFormat(elm);
           newWrappers.push(elm);
