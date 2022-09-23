@@ -11,7 +11,7 @@ import { bodyChannel } from './DialogChannels';
 
 // TypeScript allows some pretty weird stuff.
 interface WindowBodySpec {
-  readonly body: Dialog.Dialog<unknown>['body'];
+  readonly body: Dialog.Dialog<Record<string, unknown>>['body'];
   readonly initialData: Dialog.DialogData;
 }
 
@@ -48,7 +48,7 @@ const renderBody = (spec: WindowBodySpec, dialogId: string, contentId: Optional<
       tag: 'div',
       classes: [ 'tox-dialog__content-js' ],
       attributes: {
-        ...contentId.map((x): {id?: string} => ({ id: x })).getOr({}),
+        ...contentId.map((x): { id?: string } => ({ id: x })).getOr({}),
         ...ariaAttrs ? ariaAttributes : {}
       }
     },

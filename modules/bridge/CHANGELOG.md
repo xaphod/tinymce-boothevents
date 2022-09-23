@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## Unreleased
 
 ### Fixed
+- Fixed type errors caused by upgrading to TypeScript 4.8. #TINY-9161
+
+## 4.1.0 - 2022-09-08
+
+### Improved
+- The `MenuButton` type now takes a `search` field for configuring searchable menus. #TINY-8952
+
+### Fixed
 - The `colors` property was incorrectly marked as required for the `ColorSwatchMenuItemSpec` type.
 
 ## 4.0.2 - 2022-03-22

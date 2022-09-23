@@ -27,6 +27,7 @@
   .tox-toolbar,
   .tox-toolbar__primary,
   .tox-toolbar__overflow {
+    background-attachment: local;
     background-color: @toolbar-background-color;
     background-image: @_toolbar-row-separator-image;
     background-position: @_toolbar-row-separator-image-position;
@@ -75,7 +76,7 @@
   .tox-menubar + .tox-toolbar,
   .tox-menubar + .tox-toolbar-overlord {
     border-top: 1px solid @toolbar-separator-color;
-    margin-top: @toolbar-separator-distance;
+    margin-top: @toolbar-separator-distance - 1px;
     padding-bottom: @toolbar-padding-y;
     padding-top: @toolbar-separator-distance + @toolbar-padding-y;
   }
@@ -127,7 +128,7 @@
   padding: @pad-xs 0;
 }
 
-// Distraction-free mode
+// Context toolbar
 .tox-pop .tox-pop__dialog {
   /* stylelint-disable-next-line no-descending-specificity */
   .tox-toolbar {

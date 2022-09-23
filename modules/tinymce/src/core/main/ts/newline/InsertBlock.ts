@@ -25,6 +25,11 @@ const trimZwsp = (fragment: DocumentFragment) => {
   });
 };
 
+const isWithinNonEditableList = (editor: Editor, node: Node): boolean => {
+  const parentList = editor.dom.getParent(node, 'ol,ul,dl');
+  return parentList !== null && editor.dom.getContentEditableParent(parentList) === 'false';
+};
+
 const isEmptyAnchor = (dom: DOMUtils, elm: Node): boolean => {
   return elm && elm.nodeName === 'A' && dom.isEmpty(elm);
 };
@@ -147,7 +152,7 @@ const setForcedBlockAttrs = (editor: Editor, node: Element) => {
 // Wraps any text nodes or inline elements in the specified forced root block name
 const wrapSelfAndSiblingsInDefaultBlock = (editor: Editor, newBlockName: string, rng: Range, container: Node, offset: number) => {
   const dom = editor.dom;
-  const editableRoot = NewLineUtils.getEditableRoot(dom, container);
+  const editableRoot = NewLineUtils.getEditableRoot(dom, container) ?? dom.getRoot();
 
   // Not in a block element or in a table cell or caption
   let parentBlock = dom.getParent(container, dom.isBlock);
@@ -401,7 +406,7 @@ const insert = (editor: Editor, evt?: EditorEvent<KeyboardEvent>): void => {
   const editableRoot = NewLineUtils.getEditableRoot(dom, container);
 
   // If there is no editable root then enter is done inside a contentEditable false element
-  if (!editableRoot) {
+  if (!editableRoot || isWithinNonEditableList(editor, container)) {
     return;
   }
 

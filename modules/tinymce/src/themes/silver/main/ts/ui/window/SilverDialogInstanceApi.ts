@@ -24,7 +24,7 @@ const getCompByName = (access: DialogAccess, name: string): Optional<AlloyCompon
   }
 };
 
-const validateData = <T>(access: DialogAccess, data: T) => {
+const validateData = <T extends Dialog.DialogData>(access: DialogAccess, data: T) => {
   const root = access.getRoot();
   return Reflecting.getState(root).get().map((dialogState: DialogManager.DialogInit<T>) => StructureSchema.getOrDie(
     StructureSchema.asRaw('data', dialogState.dataValidator, data)
@@ -72,7 +72,7 @@ const getDialogApi = <T extends Dialog.DialogData>(
       Representing.setValue(form, newInternalData);
       Obj.each(menuItemStates, (v, k) => {
         if (Obj.has(mergedData, k)) {
-          v.set(mergedData[ k ]);
+          v.set(mergedData[k]);
         }
       });
     });
