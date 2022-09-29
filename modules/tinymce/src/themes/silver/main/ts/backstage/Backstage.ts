@@ -28,7 +28,8 @@ export interface UiFactoryBackstageShared {
   readonly interpreter: (spec: Dialog.BodyComponent) => AlloySpec;
   readonly anchors: UiFactoryBackstageAnchors;
   readonly header: UiFactoryBackstageForHeader;
-  readonly getSink: () => Result<AlloyComponent, any>;
+  readonly getDialogSink: () => Result<AlloyComponent, any>;
+  readonly getPopupSink: () => Result<AlloyComponent, any>;
 }
 
 export interface UiFactoryBackstage {
@@ -41,7 +42,14 @@ export interface UiFactoryBackstage {
   readonly setContextMenuState: (state: boolean) => void;
 }
 
-const init = (lazySink: () => Result<AlloyComponent, string>, editor: Editor, lazyAnchorbar: () => AlloyComponent): UiFactoryBackstage => {
+const init = (
+  lazySinks: {
+    getPopup: () => Result<AlloyComponent, string>;
+    getDialog: () => Result<AlloyComponent, string>;
+  },
+  editor: Editor,
+  lazyAnchorbar: () => AlloyComponent
+): UiFactoryBackstage => {
   const contextMenuState = Cell(false);
   const toolbar = HeaderBackstage(editor);
   const backstage: UiFactoryBackstage = {
@@ -56,7 +64,8 @@ const init = (lazySink: () => Result<AlloyComponent, string>, editor: Editor, la
       interpreter: (s) => UiFactory.interpretWithoutForm(s, {}, backstage),
       anchors: Anchors.getAnchors(editor, lazyAnchorbar, toolbar.isPositionedAtTop),
       header: toolbar,
-      getSink: lazySink
+      getDialogSink: lazySinks.getDialog,
+      getPopupSink: lazySinks.getPopup
     },
     urlinput: UrlInputBackstage(editor),
     styles: initStyleFormatBackstage(editor),

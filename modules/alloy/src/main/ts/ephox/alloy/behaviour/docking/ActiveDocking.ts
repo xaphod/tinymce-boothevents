@@ -10,6 +10,8 @@ const events = (dockInfo: DockingConfig, dockState: DockingState): AlloyEvents.A
   AlloyEvents.derive([
     AlloyEvents.runOnSource(NativeEvents.transitionend(), (component, simulatedEvent) => {
       dockInfo.contextual.each((contextInfo) => {
+        // Why is this check necessary? It seems more like we should care about what is transitioning
+        // as this won't distinguish between multiple transitioning styles.
         if (Class.has(component.element, contextInfo.transitionClass)) {
           Classes.remove(component.element, [ contextInfo.transitionClass, contextInfo.fadeInClass ]);
           const notify = dockState.isVisible() ? contextInfo.onShown : contextInfo.onHidden;

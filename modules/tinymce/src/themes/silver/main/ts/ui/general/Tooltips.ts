@@ -10,7 +10,7 @@ type TooltippingBehaviour = ReturnType<typeof Tooltipping['config']>;
 const upConfig = (item: { text: string }, sharedBackstage: UiFactoryBackstageShared): TooltippingBehaviour => Tooltipping.config({
   delay: 200,
   exclusive: true,
-  lazySink: sharedBackstage.getSink,
+  lazySink: sharedBackstage.getPopupSink,
   /*
     <div class="tox-tooltip tox-tooltip--down">
 <div class="tox-tooltip__body">Are you hanging on the edge of your seat? </div>

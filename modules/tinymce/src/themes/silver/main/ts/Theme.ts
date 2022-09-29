@@ -22,7 +22,7 @@ const registerOptions = (editor: Editor) => {
 export default (): void => {
   ThemeManager.add('silver', (editor): Theme => {
     registerOptions(editor);
-    const { getUiMothership, backstage, renderUI }: RenderInfo = Render.setup(editor);
+    const { getNotificationMothership, backstage, renderUI }: RenderInfo = Render.setup(editor);
 
     Autocompleter.register(editor, backstage.shared);
 
@@ -31,7 +31,8 @@ export default (): void => {
     return {
       renderUI,
       getWindowManagerImpl: Fun.constant(windowMgr),
-      getNotificationManagerImpl: () => NotificationManagerImpl(editor, { backstage }, getUiMothership())
+      getNotificationManagerImpl: () =>
+        NotificationManagerImpl(editor, { backstage }, getNotificationMothership())
     };
   });
 };

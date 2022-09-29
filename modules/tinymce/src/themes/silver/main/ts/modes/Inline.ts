@@ -1,5 +1,5 @@
-import { AlloyComponent, Attachment, Boxes, Disabling } from '@ephox/alloy';
-import { Cell, Singleton } from '@ephox/katamari';
+import { AlloyComponent, Attachment, Boxes, Disabling, Gui } from '@ephox/alloy';
+import { Arr, Cell, Singleton } from '@ephox/katamari';
 import { DomEvent, SugarElement } from '@ephox/sugar';
 
 import Editor from 'tinymce/core/api/Editor';
@@ -7,10 +7,10 @@ import { NodeChangeEvent } from 'tinymce/core/api/EventTypes';
 import { EditorUiApi } from 'tinymce/core/api/ui/Ui';
 
 import * as Events from '../api/Events';
-import { getUiContainer, isToolbarPersist } from '../api/Options';
+import { getScrollableContainer, getUiContainer, isToolbarPersist } from '../api/Options';
 import { UiFactoryBackstage } from '../backstage/Backstage';
 import * as ReadOnly from '../ReadOnly';
-import { ModeRenderInfo, RenderArgs, RenderUiComponents, RenderUiConfig } from '../Render';
+import { ModeRenderInfo, RenderArgs, RenderUiConfig } from '../Render';
 import OuterContainer from '../ui/general/OuterContainer';
 import { InlineHeader } from '../ui/header/InlineHeader';
 import { identifyMenus } from '../ui/menus/menubar/Integration';
@@ -71,11 +71,26 @@ const setupEvents = (editor: Editor, targetElm: SugarElement, ui: InlineHeader, 
   });
 };
 
-const render = (editor: Editor, uiComponents: RenderUiComponents, rawUiConfig: RenderUiConfig, backstage: UiFactoryBackstage, args: RenderArgs): ModeRenderInfo => {
-  const { mothership, uiMothership, outerContainer } = uiComponents;
+export interface InlineUiReferences {
+  readonly mainUi: {
+    outerContainer: AlloyComponent;
+    mothership: Gui.GuiSystem;
+  };
+  readonly popupUi: {
+    mothership: Gui.GuiSystem;
+  };
+  readonly dialogUi: {
+    mothership: Gui.GuiSystem;
+  };
+  uiMotherships: Gui.GuiSystem[];
+}
+
+const render = (editor: Editor, uiRefs: InlineUiReferences, rawUiConfig: RenderUiConfig, backstage: UiFactoryBackstage, args: RenderArgs): ModeRenderInfo => {
+  const outerContainer = uiRefs.mainUi.outerContainer;
+
   const floatContainer = Singleton.value<AlloyComponent>();
   const targetElm = SugarElement.fromDom(args.targetNode);
-  const ui = InlineHeader(editor, targetElm, uiComponents, backstage, floatContainer);
+  const ui = InlineHeader(editor, targetElm, uiRefs, backstage, floatContainer);
   const toolbarPersist = isToolbarPersist(editor);
 
   loadInlineSkin(editor);
@@ -86,13 +101,25 @@ const render = (editor: Editor, uiComponents: RenderUiComponents, rawUiConfig: R
       return;
     }
 
-    floatContainer.set(OuterContainer.getHeader(outerContainer).getOrDie());
+    floatContainer.set(outerContainer);
 
     const uiContainer = getUiContainer(editor);
-    Attachment.attachSystem(uiContainer, mothership);
-    Attachment.attachSystem(uiContainer, uiMothership);
+    const optScroller = getScrollableContainer(editor);
+    optScroller.fold(
+      () => {
+        Arr.each([ uiRefs.mainUi.mothership, ...uiRefs.uiMotherships ], (m) => {
+          Attachment.attachSystem(uiContainer, m);
+        });
+      },
+      (scroller) => {
+        Arr.each([ uiRefs.mainUi.mothership, uiRefs.popupUi.mothership ], (m) => {
+          Attachment.attachSystem(scroller, m);
+        });
+        Attachment.attachSystem(uiContainer, uiRefs.dialogUi.mothership);
+      }
+    );
 
-    setToolbar(editor, uiComponents, rawUiConfig, backstage);
+    setToolbar(editor, uiRefs, rawUiConfig, backstage);
 
     OuterContainer.setMenubar(
       outerContainer,
@@ -121,13 +148,13 @@ const render = (editor: Editor, uiComponents: RenderUiComponents, rawUiConfig: R
     }
   });
 
-  ReadOnly.setupReadonlyModeSwitch(editor, uiComponents);
+  ReadOnly.setupReadonlyModeSwitch(editor, uiRefs);
 
   const api: Partial<EditorUiApi> = {
     show: render,
     hide: ui.hide,
     setEnabled: (state) => {
-      ReadOnly.broadcastReadonly(uiComponents, !state);
+      ReadOnly.broadcastReadonly(uiRefs, !state);
     },
     isEnabled: () => !Disabling.isDisabled(outerContainer)
   };

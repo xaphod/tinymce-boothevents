@@ -1,10 +1,10 @@
-import { Behaviour, Channels, Disabling, Receiving } from '@ephox/alloy';
+import { AlloyComponent, Behaviour, Channels, Disabling, Gui, Receiving } from '@ephox/alloy';
 import { FieldSchema, StructureSchema } from '@ephox/boulder';
+import { Arr } from '@ephox/katamari';
 
 import Editor from 'tinymce/core/api/Editor';
 
 import * as Options from './api/Options';
-import { RenderUiComponents } from './Render';
 
 export const ReadOnlyChannel = 'silver.readonly';
 
@@ -12,32 +12,51 @@ export interface ReadOnlyData {
   readonly: boolean;
 }
 
+export interface ReadOnlyUiReferences {
+  readonly mainUi: {
+    readonly outerContainer: AlloyComponent;
+    readonly mothership: Gui.GuiSystem;
+  };
+  readonly uiMotherships: Gui.GuiSystem[];
+}
+
 const ReadOnlyDataSchema = StructureSchema.objOf([
   FieldSchema.requiredBoolean('readonly')
 ]);
 
-const broadcastReadonly = (uiComponents: RenderUiComponents, readonly: boolean): void => {
-  const outerContainer = uiComponents.outerContainer;
-  const target = outerContainer.element;
+const broadcastReadonly = (uiRefs: ReadOnlyUiReferences, readonly: boolean): void => {
+  const motherships = [
+    uiRefs.mainUi.mothership,
+    ...uiRefs.uiMotherships
+  ];
 
   if (readonly) {
-    uiComponents.mothership.broadcastOn([ Channels.dismissPopups() ], { target });
-    uiComponents.uiMothership.broadcastOn([ Channels.dismissPopups() ], { target });
+    const dismissData = {
+      target: uiRefs.mainUi.outerContainer.element
+    };
+
+    // We want to close all popups if we are setting read-only
+    // Should we only do this if we aren't already in read-only? Or is that an unnecessary
+    // optimisation?
+    Arr.each(motherships, (m) => {
+      m.broadcastOn([ Channels.dismissPopups() ], dismissData);
+    });
   }
 
-  uiComponents.mothership.broadcastOn([ ReadOnlyChannel ], { readonly });
-  uiComponents.uiMothership.broadcastOn([ ReadOnlyChannel ], { readonly });
+  Arr.each(motherships, (m) => {
+    m.broadcastOn([ ReadOnlyChannel ], { readonly });
+  });
 };
 
-const setupReadonlyModeSwitch = (editor: Editor, uiComponents: RenderUiComponents): void => {
+const setupReadonlyModeSwitch = (editor: Editor, uiRefs: ReadOnlyUiReferences): void => {
   editor.on('init', () => {
     // Force an update of the ui components disabled states if in readonly mode
     if (editor.mode.isReadOnly()) {
-      broadcastReadonly(uiComponents, true);
+      broadcastReadonly(uiRefs, true);
     }
   });
 
-  editor.on('SwitchMode', () => broadcastReadonly(uiComponents, editor.mode.isReadOnly()));
+  editor.on('SwitchMode', () => broadcastReadonly(uiRefs, editor.mode.isReadOnly()));
 
   if (Options.isReadOnly(editor)) {
     editor.mode.set('readonly');

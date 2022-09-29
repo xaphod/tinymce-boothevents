@@ -52,7 +52,7 @@ const schema = StructureSchema.objOf([
       [SystemEvents.systemInit()]: [ baseBehaviour, 'disabling', 'toggling', 'representing' ],
       [NativeEvents.input()]: [ baseBehaviour, 'representing', 'streaming', 'invalidating' ],
       [SystemEvents.detachedFromDom()]: [ baseBehaviour, 'representing', 'item-events', 'tooltipping' ],
-      [NativeEvents.mousedown()]: [ 'focusing', baseBehaviour, 'item-type-events' ],
+      [NativeEvents.mousedown()]: [ 'focusing', baseBehaviour, 'item-type-events', 'docking', 'dragging' ],
       [NativeEvents.touchstart()]: [ 'focusing', baseBehaviour, 'item-type-events' ],
       [NativeEvents.mouseover()]: [ 'item-type-events', 'tooltipping' ],
       [SystemEvents.receive()]: [ 'receiving', 'reflecting', 'tooltipping' ]

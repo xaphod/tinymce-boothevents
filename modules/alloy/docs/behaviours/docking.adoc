@@ -1,0 +1,132 @@
+
+
+== Schema
+
+=== .contextual
+
+==== .context.fadeInClass
+
+==== .contextual.fadeOutClass
+
+==== .contextual.transitionClass
+
+==== .contextual.lazyContext
+
+==== .contextual.onShow
+
+==== .contextual.onShown
+
+==== .contextual.onHide
+
+==== .contextual.onHidden
+
+=== lazyViewport
+
+=== modes: array of (top | bottom)
+
+=== onDocked
+
+=== onUndocked
+
+
+== Events
+
+=== transitionend
+
+* we only run it on the actual source, not on any child
+* if we have defined contextual information
+  * if we are currently transitioning
+    * remove the transition and fade in classes
+    * if we are visible -> fire onShown; otherwise -> fire onHidden
+  * kill the event.
+
+=== windowScroll
+
+* calls `DockingApis.refresh`
+
+=== windowResize
+
+* calls `DockingApis.reset`
+
+
+== State
+
+* isDocked and setDocked
+* getInitialPos, setInitialPos, clearInitialPos
+* isVisible and setVisible
+* getModes and setModes
+
+
+== DockingApis
+
+=== refresh
+
+* only does something is the component is attached to a system
+
+
+
+
+
+
+
+
+* state => setDocked false
+* attempt to morph to the original. This will try to draw it in its `getInitialPos`, and determine if the
+current modes available consider that position to be "visible". If it is visible, then it attempts to revert to that original position. So it clears the initialPosition, and does some massaging of data based on position.position. This will return either static or absolute. So it won't ever return fixed currently.
+** statics :
+  *** not docked anymore, remove all position styles, and fire unDocked
+** absolute :
+  ***
+** fixed :
+
+
+
+
+
+Concepts
+
+** Morphing **
+
+The `getMorph` function is used to switch between fixed and not-fixed. Morphing to fixed only occurs if it is no longer in the viewport. Morphing to the not-fixed occurs if the stored position in state can be morphed to in a visible way. The reversion is:
+
+ * clear the "position settings before moving to fixed" state.
+ * if it was static -> we keep static
+ * if it was absolute -> we get the offsetParent, and use that to calculate the actual CSS positions
+ * other -> nothing
+
+getMorphToOriginal is used intead of morphToOriginal if we want to force the reversion, and we don't care if it fits. Used when refreshing instead of resetting.
+
+Here.
+
+
+* updateVisibility: only internally called as part of refreshInternal and resetInternal
+
+Thoughts
+ - testing ... pulling out window to make it easier to test.
+ - keep going through the scenarios and understand the intended difference between reset and refresh
+
+
+
+
+----
+
+All coordinates are with scroll values *included*
+
+
+So a window scroll kicks off a refresh (there are a few others, but that's the main trigger)
+
+* the refresh has to determine because of this scroll, can I still see my thing in the original position.
+
+* it needs to be visible for all the docking modes ( top and/or bottom ) that it supports. If it isn't, then it will dock appropriately.
+  * stores the current location
+    * the x and y coordinate are determined (with scroll included) by using Boxes.box of that element.
+    * now we try to shift it to fixed, and this is where the problem is for a non-fixed alternative. It hard-codes to use the window box (which also includes scroll). So it uses that to work out where to put the new fixed position. And it returns it as fixed.
+
+So it looks like getting rid of the current Adt would probably be a nice improvement, and switching it to a tagged union. Because this will only ever return Fixed. So it would be good if the types encoded that.
+
+If we wanted to switch it to something else, this is what we'd change. But we have to also look how much of the fixed bleeds back through to the revertToOriginal. To be honest, it looks like nothing.
+
+So trying to track this with just "y" (which makes it so much easier), I'm a bit confused about what the viewport is, because here it is assumed to be different from the window. It defaults to the window, but is it ever not? At this stage, it looks like it will make things appear lower down the screen, which might actually be all we need to make docking work?
+
+Viewport is just used for visibility checking (as in, do I need to dock?) and fixed positioning offseting.
+It is used for the StickyHeader, just because of the sticky toolbar offset setting in tinymce. Aside from that, it doesn't look like it is used.

@@ -6,15 +6,17 @@ import Editor from 'tinymce/core/api/Editor';
 import { AfterProgressStateEvent } from 'tinymce/core/api/EventTypes';
 import { EditorEvent } from 'tinymce/core/api/util/EventDispatcher';
 
-const setup = (editor: Editor, mothership: Gui.GuiSystem, uiMothership: Gui.GuiSystem): void => {
+import { getScrollableContainer } from './api/Options';
+
+const setup = (editor: Editor, mothership: Gui.GuiSystem, uiMotherships: Gui.GuiSystem[]): void => {
   const broadcastEvent = (name: string, evt: EventArgs) => {
-    Arr.each([ mothership, uiMothership ], (ship) => {
+    Arr.each([ mothership, ...uiMotherships ], (ship) => {
       ship.broadcastEvent(name, evt);
     });
   };
 
   const broadcastOn = (channel: string, message: Record<string, any>) => {
-    Arr.each([ mothership, uiMothership ], (ship) => {
+    Arr.each([ mothership, ...uiMotherships ], (ship) => {
       ship.broadcastOn([ channel ], message);
     });
   };
@@ -68,6 +70,14 @@ const setup = (editor: Editor, mothership: Gui.GuiSystem, uiMothership: Gui.GuiS
     broadcastOn(Channels.dismissPopups(), { target: SugarElement.fromDom(event.relatedTarget.getContainer()) });
   };
 
+  const optOnScrollableContainerScroll = getScrollableContainer(editor).map(
+    (scroller) => {
+      return DomEvent.bind(scroller, 'scroll', (evt) => {
+        broadcastEvent(SystemEvents.windowScroll(), DomEvent.fromRawEvent<Event>(evt.raw));
+      });
+    }
+  );
+
   // Don't start listening to events until the UI has rendered
   editor.on('PostRender', () => {
     editor.on('click', onContentClick);
@@ -98,13 +108,15 @@ const setup = (editor: Editor, mothership: Gui.GuiSystem, uiMothership: Gui.GuiS
     onTouchmove.unbind();
     onTouchend.unbind();
     onMouseup.unbind();
+
+    optOnScrollableContainerScroll.each((u) => u.unbind());
   });
 
   editor.on('detach', () => {
     Attachment.detachSystem(mothership);
-    Attachment.detachSystem(uiMothership);
+    Arr.each(uiMotherships, Attachment.detachSystem);
     mothership.destroy();
-    uiMothership.destroy();
+    Arr.each(uiMotherships, (m) => m.destroy());
   });
 };
 

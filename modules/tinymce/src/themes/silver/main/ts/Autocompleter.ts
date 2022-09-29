@@ -39,7 +39,7 @@ const register = (editor: Editor, sharedBackstage: UiFactoryBackstageShared): vo
           AlloyEvents.run(SystemEvents.dismissRequested(), () => cancelIfNecessary())
         ])
       ]),
-      lazySink: sharedBackstage.getSink
+      lazySink: sharedBackstage.getPopupSink
     })
   );
 

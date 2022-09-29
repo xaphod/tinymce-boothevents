@@ -67,7 +67,7 @@ const renderInlineDialog = <T extends Dialog.DialogData>(dialogInit: DialogManag
       },
       onClose: () => extra.closeWindow()
     },
-    backstage.shared.getSink
+    backstage.shared.getPopupSink
   );
 
   // TODO: Disable while validating?

@@ -38,7 +38,8 @@ export default (sink?: AlloyComponent): UiFactoryBackstage => {
         getDockingMode: headerLocation.get,
         setDockingMode: headerLocation.set
       },
-      getSink: () => sink ? Result.value(sink) : Result.error('No test sink setup')
+      getDialogSink: () => sink ? Result.value(sink) : Result.error('No dialog test sink setup'),
+      getPopupSink: () => Result.error('No popup test sink setup')
     },
     urlinput: {
       getHistory: Fun.constant([]),

@@ -37,7 +37,7 @@ export const setup = (backstage: UiFactoryBackstage): AlertDialogApi => {
 
     const alertDialog = GuiFactory.build(
       Dialogs.renderDialog({
-        lazySink: () => sharedBackstage.getSink(),
+        lazySink: () => sharedBackstage.getDialogSink(),
         header: Dialogs.hiddenHeader(titleSpec, closeSpec),
         body: Dialogs.pBodyMessage(message, sharedBackstage.providers),
         footer: Optional.some(Dialogs.pFooter(Dialogs.pFooterGroup([], [

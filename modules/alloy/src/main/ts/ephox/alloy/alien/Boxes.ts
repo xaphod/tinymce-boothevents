@@ -63,6 +63,25 @@ const absolute = (element: SugarElement<HTMLElement>): Bounds => {
   return bounds(position.left, position.top, width, height);
 };
 
+const translate = (original: Bounds, x: number, y: number): Bounds => {
+  return bounds(
+    original.x + x,
+    original.y + y,
+    original.width,
+    original.height
+  );
+};
+
+// This is still not right. Or maybe the bottom docking calculation isn't using bounds.
+const restrictToWindow = (original: Bounds): Bounds => {
+  const winBox = win();
+  const left = Math.max(winBox.x, original.x);
+  const top = Math.max(winBox.y, original.y);
+  const width = original.right - left;
+  const height = original.bottom - top;
+  return bounds(left, top, width, height);
+};
+
 const win = (): Bounds => WindowVisualViewport.getBounds(window);
 
 export {
@@ -71,5 +90,7 @@ export {
   bounds,
   box,
   absolute,
-  win
+  win,
+  translate,
+  restrictToWindow
 };

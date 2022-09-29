@@ -82,7 +82,7 @@ describe('headless.tinymce.themes.silver.window.SilverDialogEventTest', () => {
       },
       {
         shared: {
-          getSink: () => Result.value(sink),
+          getDialogSink: () => Result.value(sink),
           providers: {
             icons: () => ({}),
             menuItems: () => ({}),

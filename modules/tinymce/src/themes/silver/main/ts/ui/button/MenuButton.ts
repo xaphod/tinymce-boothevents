@@ -94,7 +94,9 @@ const getFetch = (items: StoredMenuItem[], getButton: () => MementoRecord, backs
     item.storage.set(newValue);
 
     // Fire the form action event
-    backstage.shared.getSink().each((sink) => {
+    // Need to double-check, but I think should be the dialog
+    // sink, because this is the footer button in a dialog
+    backstage.shared.getPopupSink().each((sink) => {
       getButton().getOpt(sink).each((orig) => {
         Focus.focus(orig.element);
         AlloyTriggers.emitWith(orig, formActionEvent, {

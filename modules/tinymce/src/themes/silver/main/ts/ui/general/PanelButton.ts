@@ -39,7 +39,7 @@ export const renderPanelButton = (spec: SwatchPanelButtonSpec, sharedBackstage: 
   layouts: spec.layouts,
   sandboxClasses: [ 'tox-dialog__popups' ],
 
-  lazySink: sharedBackstage.getSink,
+  lazySink: sharedBackstage.getDialogSink,
   fetch: (comp) => Future.nu((callback) => spec.fetch(callback)).map((items) => Optional.from(createTieredDataFrom(
     Merger.deepMerge(
       createPartialChoiceMenu(

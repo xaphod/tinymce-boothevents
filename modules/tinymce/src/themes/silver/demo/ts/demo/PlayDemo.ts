@@ -13,7 +13,7 @@ export default (): void => {
     selector: 'div.tiny-text',
     inline: false,
     theme: 'silver',
-    toolbar: [ 'styles', 'MagicButton', 'code', 'undo', 'redo', 'preview', '|', 'help', 'link', '|', 'align', 'alignleft', 'alignright', 'aligncenter',
+    toolbar: [ 'bullist', 'numlist', 'styles', 'MagicButton', 'code', 'undo', 'redo', 'preview', '|', 'help', 'link', '|', 'align', 'alignleft', 'alignright', 'aligncenter',
       'alignjustify', 'alignnone', '|', 'bold', 'italic', 'underline', 'strikethrough', 'subscript', 'superscript', '|', 'blockquote',
       'outdent', 'indent', '|', 'cut', 'copy', 'paste', '|', 'help', 'selectall', 'visualaid', 'newdocument', 'removeformat', 'remove', '|', 'menu-button-1', '|', 'mailmerge', 'mailmerge-NoCollapse'
     ].join(' '),
@@ -32,12 +32,17 @@ export default (): void => {
       'image',
       'charmap',
       'emoticons',
-      'media'
+      'media',
+      'advlist'
     ],
     // statusbar: false,
     resize: 'both',
+    height: 400,
     link_context_toolbar: true,
+    toolbar_sticky: true,
+    // toolbar_location: 'bottom',
     // fixed_toolbar_container: '#tiny-fixed-container', // DEPRECATED
+    scrollable_container: '#tiny-scroller-container',
 
     menubar: 'file edit view insert format table tools Menu-1 help',
     menu: {

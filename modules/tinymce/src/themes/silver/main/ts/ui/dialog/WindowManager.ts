@@ -5,7 +5,7 @@ import {
 import { StructureProcessor, StructureSchema } from '@ephox/boulder';
 import { Dialog, DialogManager } from '@ephox/bridge';
 import { Optional, Singleton } from '@ephox/katamari';
-import { SelectorExists, SugarBody, SugarElement } from '@ephox/sugar';
+import { SelectorExists, SugarBody, SugarElement, SugarPosition } from '@ephox/sugar';
 
 import Editor from 'tinymce/core/api/Editor';
 import { WindowManagerImpl, WindowParams } from 'tinymce/core/api/WindowManager';
@@ -38,6 +38,27 @@ const inlineAdditionalBehaviours = (editor: Editor, isStickyToolbar: boolean, is
   if (isStickyToolbar && isToolbarLocationTop) {
     return [ ];
   } else {
+
+    const optLazyViewport = Options.getScrollableContainer(editor).map(
+      (scroller) => {
+        const box = Boxes.box(scroller);
+        const bounds = Boxes.bounds(
+          box.x,
+          box.y,
+          box.width,
+          box.height
+        );
+
+        return {
+          bounds,
+          scroll: Optional.some({
+            offsets: SugarPosition(scroller.dom.scrollLeft, scroller.dom.scrollTop),
+            element: scroller
+          })
+        };
+      }
+    );
+
     return [
       Docking.config({
         contextual: {
@@ -46,7 +67,10 @@ const inlineAdditionalBehaviours = (editor: Editor, isStickyToolbar: boolean, is
           fadeOutClass: 'tox-dialog-dock-fadeout',
           transitionClass: 'tox-dialog-dock-transition'
         },
-        modes: [ 'top' ]
+        modes: [ 'top' ],
+        ...optLazyViewport.map((lv) => ({
+          lazyViewport: (_c: AlloyComponent) => lv
+        })).getOr({ })
       })
     ];
   }
@@ -157,7 +181,7 @@ const setup = (extras: WindowManagerSetup): WindowManagerImpl => {
       );
 
       const inlineDialogComp = GuiFactory.build(InlineView.sketch({
-        lazySink: backstage.shared.getSink,
+        lazySink: backstage.shared.getPopupSink,
         dom: {
           tag: 'div',
           classes: [ ]

@@ -167,7 +167,7 @@ export const renderUrlInput = (
       openClass: 'tox-textfield--popup-open'
     },
 
-    lazySink: backstage.shared.getSink,
+    lazySink: backstage.shared.getDialogSink,
 
     parts: {
       menu: MenuParts.part(false, 1, 'normal')

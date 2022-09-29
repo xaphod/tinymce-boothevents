@@ -1,6 +1,6 @@
 import { AlloyComponent, Behaviour, Boxes, Channels, Docking, Focusing, Receiving } from '@ephox/alloy';
 import { Arr, Optional, Result, Singleton } from '@ephox/katamari';
-import { Class, Classes, Compare, Css, Focus, Height, Scroll, SugarElement, SugarLocation, Traverse, Visibility, Width } from '@ephox/sugar';
+import { Class, Classes, Compare, Css, Focus, Height, Scroll, SugarElement, SugarLocation, SugarPosition, Traverse, Visibility, Width } from '@ephox/sugar';
 
 import Editor from 'tinymce/core/api/Editor';
 import { ScrollIntoViewEvent } from 'tinymce/core/api/EventTypes';
@@ -177,9 +177,9 @@ const getIframeBehaviours = () => [
   })
 ];
 
-const getBehaviours = (editor: Editor, sharedBackstage: UiFactoryBackstageShared): Behaviour.NamedConfiguredBehaviour<any, any, any>[] => {
+const getDockingBehaviour = (editor: Editor, sharedBackstage: UiFactoryBackstageShared): Behaviour.NamedConfiguredBehaviour<any, any, any> => {
   const focusedElm = Singleton.value<SugarElement>();
-  const lazySink = sharedBackstage.getSink;
+  const lazySink = sharedBackstage.getPopupSink;
 
   const runOnSinkElement = (f: (sink: SugarElement) => void) => {
     lazySink().each((sink) => f(sink.element));
@@ -194,53 +194,82 @@ const getBehaviours = (editor: Editor, sharedBackstage: UiFactoryBackstageShared
     lazySink().each((sink) => sink.getSystem().broadcastOn( [ Channels.repositionPopups() ], { }));
   };
 
+  const optScroller = Options.getScrollableContainer(editor);
+  return Docking.config({
+    contextual: {
+      lazyContext: (comp) => {
+        const headerHeight = Height.getOuter(comp.element);
+        const container = editor.inline ? editor.getContentAreaContainer() : editor.getContainer();
+        const box = Boxes.box(SugarElement.fromDom(container));
+        // Force the header to hide before it overflows outside the container
+        const boxHeight = box.height - headerHeight;
+        const topBound = box.y + (isDockedMode(comp, 'top') ? 0 : headerHeight);
+        return Optional.some(Boxes.bounds(box.x, topBound, box.width, boxHeight));
+      },
+      onShow: () => {
+        runOnSinkElement((elem) => updateSinkVisibility(elem, true));
+      },
+      onShown: (comp) => {
+        runOnSinkElement((elem) => Classes.remove(elem, [ visibility.transitionClass, visibility.fadeInClass ]));
+        // Restore focus and reset the stored focused element
+        focusedElm.get().each((elem) => {
+          restoreFocus(comp.element, elem);
+          focusedElm.clear();
+        });
+      },
+      onHide: (comp) => {
+        findFocusedElem(comp.element, lazySink).fold(focusedElm.clear, focusedElm.set);
+        runOnSinkElement((elem) => updateSinkVisibility(elem, false));
+      },
+      onHidden: () => {
+        runOnSinkElement((elem) => Classes.remove(elem, [ visibility.transitionClass ]));
+      },
+      ...visibility
+    },
+    lazyViewport: (comp: AlloyComponent) => {
+
+      return optScroller.fold(
+        () => {
+          const win = Boxes.win();
+          const offset = Options.getStickyToolbarOffset(editor);
+          const top = win.y + (isDockedMode(comp, 'top') ? offset : 0);
+          const height = win.height - (isDockedMode(comp, 'bottom') ? offset : 0);
+          return {
+            bounds: Boxes.bounds(win.x, top, win.width, height),
+            scroll: Optional.none()
+          };
+        },
+        (scroller) => {
+          const bounds = Boxes.box(scroller);
+          return {
+            bounds,
+            scroll: Optional.some({
+              offsets: SugarPosition(scroller.dom.scrollLeft, scroller.dom.scrollTop),
+              element: scroller
+            })
+          };
+        }
+      );
+
+      // Ignoring sticky toolbar offset for now.
+      // const win = Boxes.win();
+      // const offset = Options.getStickyToolbarOffset(editor);
+      // const top = win.y + (isDockedMode(comp, 'top') ? offset : 0);
+      // const height = win.height - (isDockedMode(comp, 'bottom') ? offset : 0);
+      // return Boxes.bounds(win.x, top, win.width, height);
+    },
+    modes: [ sharedBackstage.header.getDockingMode() ],
+    onDocked: onDockingSwitch,
+    onUndocked: onDockingSwitch
+  });
+};
+
+const getBehaviours = (editor: Editor, sharedBackstage: UiFactoryBackstageShared): Behaviour.NamedConfiguredBehaviour<any, any, any>[] => {
   const additionalBehaviours = editor.inline ? [ ] : getIframeBehaviours();
 
   return [
     Focusing.config({ }),
-    Docking.config({
-      contextual: {
-        lazyContext: (comp) => {
-          const headerHeight = Height.getOuter(comp.element);
-          const container = editor.inline ? editor.getContentAreaContainer() : editor.getContainer();
-          const box = Boxes.box(SugarElement.fromDom(container));
-          // Force the header to hide before it overflows outside the container
-          const boxHeight = box.height - headerHeight;
-          const topBound = box.y + (isDockedMode(comp, 'top') ? 0 : headerHeight);
-          return Optional.some(Boxes.bounds(box.x, topBound, box.width, boxHeight));
-        },
-        onShow: () => {
-          runOnSinkElement((elem) => updateSinkVisibility(elem, true));
-        },
-        onShown: (comp) => {
-          runOnSinkElement((elem) => Classes.remove(elem, [ visibility.transitionClass, visibility.fadeInClass ]));
-          // Restore focus and reset the stored focused element
-          focusedElm.get().each((elem) => {
-            restoreFocus(comp.element, elem);
-            focusedElm.clear();
-          });
-        },
-        onHide: (comp) => {
-          findFocusedElem(comp.element, lazySink).fold(focusedElm.clear, focusedElm.set);
-          runOnSinkElement((elem) => updateSinkVisibility(elem, false));
-        },
-        onHidden: () => {
-          runOnSinkElement((elem) => Classes.remove(elem, [ visibility.transitionClass ]));
-        },
-        ...visibility
-      },
-      lazyViewport: (comp) => {
-        const win = Boxes.win();
-        const offset = Options.getStickyToolbarOffset(editor);
-        const top = win.y + (isDockedMode(comp, 'top') ? offset : 0);
-        const height = win.height - (isDockedMode(comp, 'bottom') ? offset : 0);
-        return Boxes.bounds(win.x, top, win.width, height);
-      },
-      modes: [ sharedBackstage.header.getDockingMode() ],
-      onDocked: onDockingSwitch,
-      onUndocked: onDockingSwitch
-    }),
-
+    ...(!editor.inline ? [ getDockingBehaviour(editor, sharedBackstage) ] : [ ]),
     ...additionalBehaviours
   ];
 };
@@ -248,5 +277,6 @@ const getBehaviours = (editor: Editor, sharedBackstage: UiFactoryBackstageShared
 export {
   setup,
   isDocked,
-  getBehaviours
+  getBehaviours,
+  getDockingBehaviour
 };

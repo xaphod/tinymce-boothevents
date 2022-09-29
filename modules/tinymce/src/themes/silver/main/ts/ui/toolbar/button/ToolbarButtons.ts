@@ -134,7 +134,7 @@ const renderFloatingToolbarButton = (spec: Toolbar.GroupToolbarButton, backstage
   const sharedBackstage = backstage.shared;
 
   return FloatingToolbarButton.sketch({
-    lazySink: sharedBackstage.getSink,
+    lazySink: sharedBackstage.getPopupSink,
     fetch: () => Future.nu((resolve) => {
       resolve(Arr.map(identifyButtons(spec.items), renderToolbarGroup));
     }),
@@ -300,7 +300,7 @@ const renderSplitButton = (spec: Toolbar.ToolbarSplitButton, sharedBackstage: Ui
     },
 
     toggleClass: ToolbarButtonClasses.Ticked,
-    lazySink: sharedBackstage.getSink,
+    lazySink: sharedBackstage.getPopupSink,
     fetch: fetchChoices(getApi, spec, sharedBackstage.providers),
 
     parts: {

@@ -47,7 +47,7 @@ export const setup = (backstage: UiFactoryBackstage): ConfirmDialogApi => {
 
     const confirmDialog = GuiFactory.build(
       Dialogs.renderDialog({
-        lazySink: () => sharedBackstage.getSink(),
+        lazySink: () => sharedBackstage.getDialogSink(),
         header: Dialogs.hiddenHeader(titleSpec, closeSpec),
         body: Dialogs.pBodyMessage(message, sharedBackstage.providers),
         footer: Optional.some(Dialogs.pFooter(Dialogs.pFooterGroup([], [

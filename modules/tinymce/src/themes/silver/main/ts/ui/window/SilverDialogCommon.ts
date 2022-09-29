@@ -73,7 +73,7 @@ const renderModalDialog = <T>(spec: DialogSpec, initialData: T, dialogEvents: Al
 
   return GuiFactory.build(Dialogs.renderDialog({
     ...spec,
-    lazySink: backstage.shared.getSink,
+    lazySink: backstage.shared.getDialogSink,
     extraBehaviours: [
       Reflecting.config({
         channel: `${dialogChannel}-${spec.id}`,

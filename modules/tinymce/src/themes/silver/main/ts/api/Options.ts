@@ -271,6 +271,11 @@ const register = (editor: Editor): void => {
   registerOption('sidebar_show', {
     processor: 'string'
   });
+
+  registerOption('scrollable_container', {
+    processor: 'string',
+    default: ''
+  });
 };
 
 const isReadOnly = option('readonly');
@@ -308,6 +313,7 @@ const getResize = option('resize');
 const getPasteAsText = option('paste_as_text');
 const getSidebarShow = option('sidebar_show');
 const promotionEnabled = option('promotion');
+const scrollableContainerSelector = option('scrollable_container');
 
 const isSkinDisabled = (editor: Editor): boolean =>
   editor.options.get('skin') === false;
@@ -405,6 +411,16 @@ const getMenus = (editor: Editor): Record<string, { title: string; items: string
   return Obj.map(menu, (menu) => ({ ...menu, items: menu.items }));
 };
 
+const getScrollableContainer = (editor: Editor): Optional<SugarElement<HTMLElement>> => {
+  const selector = scrollableContainerSelector(editor);
+  if (selector !== undefined && selector.length > 0) {
+    // TODO: ShadowDom support?
+    return SelectorFind.descendant(SugarBody.body(), selector);
+  } else {
+    return Optional.none();
+  }
+};
+
 export {
   register,
   getSkinUrl,
@@ -452,5 +468,6 @@ export {
   useBranding,
   getResize,
   getPasteAsText,
-  getSidebarShow
+  getSidebarShow,
+  getScrollableContainer
 };

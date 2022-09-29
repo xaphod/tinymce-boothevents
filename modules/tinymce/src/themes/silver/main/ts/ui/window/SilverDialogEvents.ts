@@ -108,6 +108,7 @@ const initDialog = <T extends Dialog.DialogData>(getInstanceApi: () => Dialog.Di
           focusIn();
         // Lastly if something outside the sink has focus then return the focus back to the dialog
         } else {
+          // TINY-8853: make sure this is the external sink
           getSink().toOptional()
             .filter((sink) => !Compare.contains(sink.element, focused))
             .each(focusIn);

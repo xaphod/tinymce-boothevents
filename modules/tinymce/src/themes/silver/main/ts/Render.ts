@@ -1,9 +1,9 @@
 import {
-  AlloyComponent, AlloyEvents, AlloyParts, AlloySpec, Behaviour, Disabling, Gui, GuiFactory, Keying, Memento, Positioning, SimpleSpec, SystemEvents, VerticalDir
+  AlloyComponent, AlloyEvents, AlloyParts, AlloySpec, Behaviour, Boxes, Disabling, Gui, GuiFactory, Keying, Memento, Positioning, SimpleSpec, SystemEvents, VerticalDir
 } from '@ephox/alloy';
-import { Arr, Merger, Obj, Optional, Result, Singleton } from '@ephox/katamari';
+import { Arr, Merger, Obj, Optional, Result } from '@ephox/katamari';
 import { PlatformDetection } from '@ephox/sand';
-import { Compare, Css, SugarBody, SugarElement } from '@ephox/sugar';
+import { Compare, Css, Height, SugarBody, SugarElement, SugarLocation, Traverse, Width, WindowVisualViewport } from '@ephox/sugar';
 
 import Editor from 'tinymce/core/api/Editor';
 import { EditorUiApi } from 'tinymce/core/api/ui/Ui';
@@ -29,6 +29,7 @@ import * as Utils from './ui/sizing/Utils';
 import { renderStatusbar } from './ui/statusbar/Statusbar';
 import * as Throbber from './ui/throbber/Throbber';
 import { RenderToolbarConfig } from './ui/toolbar/Integration';
+import { LazyUiReferences, MainUi, ReadyUiReferences, SinkAndMothership } from './wombat/UiReferences';
 
 export interface ModeRenderInfo {
   readonly iframeContainer?: HTMLIFrameElement;
@@ -37,8 +38,7 @@ export interface ModeRenderInfo {
 }
 
 export interface RenderInfo {
-  readonly getMothership: () => Gui.GuiSystem;
-  readonly getUiMothership: () => Gui.GuiSystem;
+  readonly getNotificationMothership: () => Gui.GuiSystem;
   readonly backstage: Backstage.UiFactoryBackstage;
   readonly renderUI: () => ModeRenderInfo;
 }
@@ -47,7 +47,7 @@ export interface RenderUiComponents {
   readonly mothership: Gui.GuiSystem;
   readonly uiMothership: Gui.GuiSystem;
   readonly outerContainer: AlloyComponent;
-  readonly sink: AlloyComponent;
+  readonly dialogSink: AlloyComponent;
 }
 
 export type ToolbarConfig = Array<string | Options.ToolbarGroupOption> | string | boolean;
@@ -61,18 +61,12 @@ export interface RenderArgs {
   readonly height: string;
 }
 
-const getLazyMothership = (singleton: Singleton.Value<Gui.GuiSystem>) =>
-  singleton.get().getOrDie('UI has not been rendered');
-
 const setup = (editor: Editor): RenderInfo => {
   const isInline = editor.inline;
   const mode = isInline ? Inline : Iframe;
   const header = Options.isStickyToolbar(editor) ? StickyHeader : StaticHeader;
 
-  const lazySink = Singleton.value<AlloyComponent>();
-  const lazyOuterContainer = Singleton.value<AlloyComponent>();
-  const lazyMothership = Singleton.value<Gui.GuiSystem>();
-  const lazyUiMothership = Singleton.value<Gui.GuiSystem>();
+  const lazyUiRefs = LazyUiReferences();
 
   const platform = PlatformDetection.detect();
   const isTouch = platform.deviceType.isTouch();
@@ -88,13 +82,43 @@ const setup = (editor: Editor): RenderInfo => {
     }
   });
 
-  const lazyHeader = () => lazyOuterContainer.get().bind(OuterContainer.getHeader);
-  const lazySinkResult = () => Result.fromOption(lazySink.get(), 'UI has not been rendered');
-  const lazyAnchorBar = () => lazyOuterContainer.get().bind((container) => memAnchorBar.getOpt(container)).getOrDie('Could not find a anchor bar element');
-  const lazyToolbar = () => lazyOuterContainer.get().bind((container) => OuterContainer.getToolbar(container)).getOrDie('Could not find more toolbar element');
-  const lazyThrobber = () => lazyOuterContainer.get().bind((container) => OuterContainer.getThrobber(container)).getOrDie('Could not find throbber element');
+  const lazyHeader = () => lazyUiRefs.mainUi.get()
+    .map((ui) => ui.outerContainer)
+    .bind((oc) => editor.inline ? Optional.some(oc) : OuterContainer.getHeader(oc));
 
-  const backstage: Backstage.UiFactoryBackstage = Backstage.init(lazySinkResult, editor, lazyAnchorBar);
+  const lazyDialogSinkResult = () => Result.fromOption(
+    lazyUiRefs.dialogUi.get().map((ui) => ui.sink),
+    'UI has not been rendered'
+  );
+
+  const lazyPopupSinkResult = () => Result.fromOption(
+    lazyUiRefs.popupUi.get().map((ui) => ui.sink),
+    '(adjacent) UI has not been rendered'
+  );
+
+  const lazyAnchorBar = lazyUiRefs.lazyGetInOuterOrDie(
+    'anchor bar',
+    memAnchorBar.getOpt
+  );
+
+  const lazyToolbar = lazyUiRefs.lazyGetInOuterOrDie(
+    'toolbar',
+    OuterContainer.getToolbar
+  );
+
+  const lazyThrobber = lazyUiRefs.lazyGetInOuterOrDie(
+    'throbber',
+    OuterContainer.getThrobber
+  );
+
+  const backstage: Backstage.UiFactoryBackstage = Backstage.init(
+    {
+      getDialog: lazyDialogSinkResult,
+      getPopup: lazyPopupSinkResult
+    },
+    editor,
+    lazyAnchorBar
+  );
 
   const makeHeaderPart = (): AlloyParts.ConfiguredPart => {
     const verticalDirAttributes = {
@@ -121,7 +145,7 @@ const setup = (editor: Editor): RenderInfo => {
         tag: 'div',
         classes: [ 'tox-toolbar' ]
       },
-      getSink: lazySinkResult,
+      getSink: lazyPopupSinkResult,
       providers: backstage.shared.providers,
       onEscape: () => {
         editor.focus();
@@ -219,7 +243,57 @@ const setup = (editor: Editor): RenderInfo => {
     };
   };
 
-  const renderSink = () => {
+  const renderPopupUi = (): SinkAndMothership => {
+    const sink = GuiFactory.build({
+      dom: {
+        tag: 'div',
+        classes: [ 'tox', 'tox-silver-sink', 'tox-tinymce-aux' ].concat(deviceClasses),
+        attributes: {
+          ...I18n.isRtl() ? { dir: 'rtl' } : {}
+        }
+      },
+      behaviours: Behaviour.derive([
+        Positioning.config({
+          useFixed: () => header.isDocked(lazyHeader),
+          getBounds: () => {
+            // hard-coded to where I know the parent is.
+            return Traverse.parent(sink.element).map(
+              (sinkEl) => {
+                // TINY-8853: This can't be bigger than WindowVisualViewport either!
+                const el = sinkEl as SugarElement<HTMLElement>;
+                const xy = SugarLocation.absolute(el);
+                const w = Width.getOuter(el);
+                const h = Height.getOuter(el);
+
+                const winBox = Boxes.win();
+
+                // Cap it at the window level as well.
+                const bottom = Math.min(winBox.bottom, xy.top + h);
+
+                return {
+                  x: xy.left,
+                  y: xy.top,
+                  width: w,
+                  height: bottom - xy.top,
+                  right: xy.left + w,
+                  bottom
+                };
+              }
+            ).getOrThunk(
+              () => WindowVisualViewport.getBounds(window)
+            );
+          }
+        })
+      ])
+    });
+
+    const mothership = Gui.takeover(sink);
+
+    return { sink, mothership } as any;
+  };
+
+  const renderDialogUi = (): SinkAndMothership => {
+    // This is what the uiMothership is going to be inserted
     const uiContainer = Options.getUiContainer(editor);
 
     // TINY-3321: When the body is using a grid layout, we need to ensure the sink width is manually set
@@ -240,6 +314,9 @@ const setup = (editor: Editor): RenderInfo => {
       ])
     };
 
+    // I think this one might need to be on the popup sink or something.
+    // Or maybe not because it is inherited via the DOM hierarchy. Actually, it isn't ... that's
+    // sort of the issue.
     const reactiveWidthSpec = {
       dom: {
         styles: { width: document.body.clientWidth + 'px' }
@@ -252,15 +329,15 @@ const setup = (editor: Editor): RenderInfo => {
     };
 
     const sink = GuiFactory.build(Merger.deepMerge(sinkSpec, isGridUiContainer ? reactiveWidthSpec : {}));
-    const uiMothership = Gui.takeover(sink);
+    const mothership = Gui.takeover(sink);
 
-    lazySink.set(sink);
-    lazyUiMothership.set(uiMothership);
-
-    return { sink, uiMothership };
+    return {
+      sink,
+      mothership
+    };
   };
 
-  const renderContainer = () => {
+  const renderMainUi = (): MainUi => {
     const partHeader = makeHeaderPart();
     const sidebarContainer = makeSidebarDefinition();
 
@@ -332,16 +409,14 @@ const setup = (editor: Editor): RenderInfo => {
           Keying.config({
             mode: 'cyclic',
             selector: '.tox-menubar, .tox-toolbar, .tox-toolbar__primary, .tox-toolbar__overflow--open, .tox-sidebar__overflow--open, .tox-statusbar__path, .tox-statusbar__wordcount, .tox-statusbar__branding a, .tox-statusbar__resize-handle'
-          })
+          }),
+
+          ...(editor.inline ? [ StickyHeader.getDockingBehaviour(editor, backstage.shared) ] : [])
         ])
       })
     );
 
     const mothership = Gui.takeover(outerContainer);
-
-    lazyOuterContainer.set(outerContainer);
-    lazyMothership.set(mothership);
-
     return { mothership, outerContainer };
   };
 
@@ -385,8 +460,22 @@ const setup = (editor: Editor): RenderInfo => {
   };
 
   const renderUI = (): ModeRenderInfo => {
-    const { mothership, outerContainer } = renderContainer();
-    const { uiMothership, sink } = renderSink();
+    const popupUi = renderPopupUi();
+    lazyUiRefs.popupUi.set(popupUi);
+    const dialogUi = renderDialogUi();
+    lazyUiRefs.dialogUi.set(dialogUi);
+    const mainUi = renderMainUi();
+    lazyUiRefs.mainUi.set(mainUi);
+
+    // From here on, we shouldn't use lazy references any more.
+    const uiRefs: ReadyUiReferences = {
+      popupUi,
+      dialogUi,
+      mainUi,
+      uiMotherships: lazyUiRefs.getUiMotherships()
+    };
+
+    const outerContainer = mainUi.outerContainer;
 
     Obj.map(Options.getToolbarGroups(editor), (toolbarGroupButtonConfig, name) => {
       editor.ui.registry.addGroupToolbarButton(name, toolbarGroupButtonConfig);
@@ -406,27 +495,33 @@ const setup = (editor: Editor): RenderInfo => {
     };
 
     setupShortcutsAndCommands(outerContainer);
-    Events.setup(editor, mothership, uiMothership);
+    Events.setup(editor, mainUi.mothership, [ popupUi.mothership, dialogUi.mothership ]);
     header.setup(editor, backstage.shared, lazyHeader);
     FormatControls.setup(editor, backstage);
-    SilverContextMenu.setup(editor, lazySinkResult, backstage);
+    SilverContextMenu.setup(editor, lazyPopupSinkResult, backstage);
     Sidebar.setup(editor);
     Throbber.setup(editor, lazyThrobber, backstage.shared);
-    ContextToolbar.register(editor, contextToolbars, sink, { backstage });
-    TableSelectorHandles.setup(editor, sink);
+    ContextToolbar.register(editor, contextToolbars, popupUi.sink, { backstage });
+    TableSelectorHandles.setup(editor, popupUi.sink);
 
     const elm = editor.getElement();
     const height = setEditorSize(outerContainer);
 
-    const uiComponents: RenderUiComponents = { mothership, uiMothership, outerContainer, sink };
     const args: RenderArgs = { targetNode: elm, height };
-    return mode.render(editor, uiComponents, rawUiConfig, backstage, args);
+    return mode.render(editor, uiRefs, rawUiConfig, backstage, args);
   };
 
-  const getMothership = (): Gui.GuiSystem => getLazyMothership(lazyMothership);
-  const getUiMothership = (): Gui.GuiSystem => getLazyMothership(lazyUiMothership);
+  const getNotificationMothership = (): Gui.GuiSystem => {
+    return lazyUiRefs.popupUi.get().map(
+      (popupUi) => {
+        return popupUi.mothership;
+      }
+    ).getOrDie(
+      'UI has not been rendered'
+    );
+  };
 
-  return { getMothership, getUiMothership, backstage, renderUI };
+  return { getNotificationMothership, backstage, renderUI };
 };
 
 export {

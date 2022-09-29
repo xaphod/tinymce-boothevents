@@ -21,7 +21,7 @@ const tooltipBehaviour = (
   Obj.get(meta, 'tooltipWorker')
     .map((tooltipWorker: TooltipWorker) => [
       Tooltipping.config({
-        lazySink: sharedBackstage.getSink,
+        lazySink: sharedBackstage.getPopupSink,
         tooltipDom: {
           tag: 'div',
           classes: [ 'tox-tooltip-worker-container' ]

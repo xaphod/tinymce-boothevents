@@ -180,6 +180,7 @@ interface BaseEditorOptions {
   resize?: boolean | 'both';
   resize_img_proportional?: boolean;
   root_name?: string;
+  scrollable_container?: string;
   schema?: SchemaType;
   selector?: string;
   setup?: SetupCallback;

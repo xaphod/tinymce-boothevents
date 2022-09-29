@@ -46,7 +46,7 @@ const renderDialog = <T extends Dialog.DialogData>(dialogInit: DialogManager.Dia
   const dialogEvents = SilverDialogEvents.initDialog<T>(
     () => instanceApi,
     SilverDialogCommon.getEventExtras(() => dialog, backstage.shared.providers, extra),
-    backstage.shared.getSink
+    backstage.shared.getDialogSink
   );
 
   const dialogSize = getDialogSizeClasses(internalDialog.size);

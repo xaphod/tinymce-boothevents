@@ -211,7 +211,7 @@ const renderCommonDropdown = <T>(
         ])
       ]),
 
-      lazySink: sharedBackstage.getSink,
+      lazySink: sharedBackstage.getPopupSink,
 
       toggleClass: `${prefix}--active`,
 

@@ -60,7 +60,7 @@ export default (editor: Editor, extras: Extras, uiMothership: Gui.GuiSystem): No
           tag: 'div',
           classes: [ 'tox-notifications-container' ]
         },
-        lazySink: sharedBackstage.getSink,
+        lazySink: sharedBackstage.getPopupSink,
         fireDismissalEventInstead: {},
         ...sharedBackstage.header.isPositionedAtTop() ? {} : { fireRepositionEventInstead: {}}
       })
