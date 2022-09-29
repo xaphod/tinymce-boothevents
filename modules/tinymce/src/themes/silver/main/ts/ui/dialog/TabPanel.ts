@@ -92,8 +92,12 @@ export const renderTabPanel = (spec: TabPanelSpec, dialogData: Dialog.DialogData
     };
   });
 
+  // default to smartMode, which also cause low performance
+  let tabMode = DialogTabHeight.smartMode(allTabs);
   // Assign fixed height or variable height to the tabs
-  const tabMode = DialogTabHeight.smartMode(allTabs);
+  if (spec.highestTabLabel) {
+    tabMode = DialogTabHeight.prescribedMode(allTabs, spec.highestTabLabel);
+  }
 
   return AlloyTabSection.sketch({
     dom: {

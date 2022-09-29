@@ -165,7 +165,45 @@ const naiveMode = (_allTabs: TabbarTypes.TabButtonWithViewSpec[]): TabHeightMode
   };
 };
 
+// Fixed the tab height to the height of a specified
+const prescribedMode = (allTabs: TabbarTypes.TabButtonWithViewSpec[], label: string): TabHeightMode => {
+  const maxTabHeight = Singleton.value<number>();
+
+  const extraEvents: AlloyEvents.AlloyEventKeyAndHandler<EventFormat>[] = [
+    AlloyEvents.runOnAttached((comp) => {
+      const dialog = comp.element;
+      getTabview(dialog).each((tabview) => {
+
+        // Determine the maximum heights of each tab
+        comp.getSystem().getByDom(tabview).toOptional().each((tabviewComp) => {
+          Arr.find(allTabs, (t) => t.value === label).each( (tab) => {
+            Css.set(tabview, 'visibility', 'hidden');
+
+            Replacing.set(tabviewComp, tab.view());
+            const rect = tabview.dom.getBoundingClientRect();
+            Replacing.set(tabviewComp, [ ]);
+            maxTabHeight.set(rect.height);
+
+            Css.remove(tabview, 'visibility');
+            showTab(allTabs, comp);
+
+            requestAnimationFrame(() => {
+              updateTabviewHeight(dialog, tabview, maxTabHeight);
+            });
+          });
+        });
+      });
+    })
+  ];
+
+  return {
+    extraEvents,
+    selectFirst: false
+  };
+};
+
 export {
   smartMode,
-  naiveMode
+  naiveMode,
+  prescribedMode
 };
