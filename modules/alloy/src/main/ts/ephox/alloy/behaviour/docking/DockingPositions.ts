@@ -125,12 +125,13 @@ export const dockToTop = (context: DockingPositionContext): DockToTopDetails => 
               topY: newY
             };
           } else {
-            console.log('offset parent is outside scroll');
+            console.log('offset parent is outside scroll + adjustment');
+            const aboveWindowTop = context.viewport.y - context.getWinBox().y;
             const newY = context.viewport.y - context.getBodyBox().y;
             return {
               location: 'top',
               position: 'absolute',
-              topY: newY
+              topY: aboveWindowTop < 0 ? -aboveWindowTop + newY : newY
             };
           }
         }
