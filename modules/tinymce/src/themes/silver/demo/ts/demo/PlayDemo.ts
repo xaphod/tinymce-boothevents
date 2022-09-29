@@ -40,6 +40,7 @@ export default (): void => {
     height: 400,
     link_context_toolbar: true,
     toolbar_sticky: true,
+    toolbar_location: 'top',
     // toolbar_location: 'bottom',
     // fixed_toolbar_container: '#tiny-fixed-container', // DEPRECATED
     scrollable_container: '#tiny-scroller-container',

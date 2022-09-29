@@ -77,8 +77,16 @@ const restrictToWindow = (original: Bounds): Bounds => {
   const winBox = win();
   const left = Math.max(winBox.x, original.x);
   const top = Math.max(winBox.y, original.y);
-  const width = original.right - left;
-  const height = original.bottom - top;
+  const right = Math.min(winBox.right, original.right);
+  const bottom = Math.min(winBox.bottom, original.bottom);
+  const width = right - left;
+  const height = bottom - top;
+  console.log({
+    originalY: original.y,
+    originalBottom: original.bottom,
+    nowY: top,
+    nowBottom: bottom
+  });
   return bounds(left, top, width, height);
 };
 

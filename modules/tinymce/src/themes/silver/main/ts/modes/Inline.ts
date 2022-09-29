@@ -1,4 +1,4 @@
-import { AlloyComponent, Attachment, Boxes, Disabling, Gui } from '@ephox/alloy';
+import { AlloyComponent, Attachment, Boxes, Disabling, Docking, Gui } from '@ephox/alloy';
 import { Arr, Cell, Singleton } from '@ephox/katamari';
 import { DomEvent, SugarElement } from '@ephox/sugar';
 
@@ -123,7 +123,30 @@ const render = (editor: Editor, uiRefs: InlineUiReferences, rawUiConfig: RenderU
 
     OuterContainer.setMenubar(
       outerContainer,
-      identifyMenus(editor, rawUiConfig)
+      identifyMenus(editor, rawUiConfig).concat([
+        // Primarily for debugging, but maybe it would be useful to have?
+        {
+          text: 'docking',
+          getItems: () => {
+            return [
+              {
+                type: 'menuitem',
+                text: 'Dock To Top',
+                onAction: () => {
+                  Docking.forceDockToTop(outerContainer);
+                }
+              },
+              {
+                type: 'menuitem',
+                text: 'Dock To Bottom',
+                onAction: () => {
+                  Docking.forceDockToBottom(outerContainer);
+                }
+              }
+            ];
+          }
+        }
+      ])
     );
 
     // Initialise the toolbar - set initial positioning then show

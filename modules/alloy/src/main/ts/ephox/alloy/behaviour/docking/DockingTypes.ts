@@ -60,6 +60,7 @@ export interface DockingBehaviour extends Behaviour.AlloyBehaviour<DockingConfig
   forceDockToTop: (component: AlloyComponent) => void;
   forceDockToBottom: (component: AlloyComponent) => void;
   forceRestore: (component: AlloyComponent) => void;
+  clearOriginal: (component: AlloyComponent) => void;
 }
 
 export interface DockingContext {

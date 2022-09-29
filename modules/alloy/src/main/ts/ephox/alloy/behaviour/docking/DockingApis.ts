@@ -173,4 +173,8 @@ const forceRestore = (component: AlloyComponent, config: DockingConfig, state: D
   });
 };
 
-export { refresh, reset, isDocked, getModes, setModes, forceDockToTop, forceDockToBottom, forceRestore };
+const clearOriginal = (component: AlloyComponent, config: DockingConfig, state: DockingState): void => {
+  state.clearInitialPos();
+};
+
+export { refresh, reset, isDocked, getModes, setModes, forceDockToTop, forceDockToBottom, forceRestore, clearOriginal };

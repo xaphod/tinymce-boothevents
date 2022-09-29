@@ -73,6 +73,7 @@ const setup = (editor: Editor, mothership: Gui.GuiSystem, uiMotherships: Gui.Gui
   const optOnScrollableContainerScroll = getScrollableContainer(editor).map(
     (scroller) => {
       return DomEvent.bind(scroller, 'scroll', (evt) => {
+        console.log('scrolling');
         broadcastEvent(SystemEvents.windowScroll(), DomEvent.fromRawEvent<Event>(evt.raw));
       });
     }

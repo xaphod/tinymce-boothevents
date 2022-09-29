@@ -194,22 +194,25 @@ const getDockingBehaviour = (editor: Editor, sharedBackstage: UiFactoryBackstage
     lazySink().each((sink) => sink.getSystem().broadcastOn( [ Channels.repositionPopups() ], { }));
   };
 
-  const optScroller = Options.getScrollableContainer(editor);
-  return Docking.config({
+  const contextualDocking = {
     contextual: {
-      lazyContext: (comp) => {
+      lazyContext: (comp: AlloyComponent) => {
         const headerHeight = Height.getOuter(comp.element);
         const container = editor.inline ? editor.getContentAreaContainer() : editor.getContainer();
         const box = Boxes.box(SugarElement.fromDom(container));
         // Force the header to hide before it overflows outside the container
         const boxHeight = box.height - headerHeight;
         const topBound = box.y + (isDockedMode(comp, 'top') ? 0 : headerHeight);
-        return Optional.some(Boxes.bounds(box.x, topBound, box.width, boxHeight));
+        return Optional.some(
+          Boxes.restrictToWindow(
+            Boxes.bounds(box.x, topBound, box.width, boxHeight)
+          )
+        );
       },
       onShow: () => {
         runOnSinkElement((elem) => updateSinkVisibility(elem, true));
       },
-      onShown: (comp) => {
+      onShown: (comp: AlloyComponent) => {
         runOnSinkElement((elem) => Classes.remove(elem, [ visibility.transitionClass, visibility.fadeInClass ]));
         // Restore focus and reset the stored focused element
         focusedElm.get().each((elem) => {
@@ -217,7 +220,7 @@ const getDockingBehaviour = (editor: Editor, sharedBackstage: UiFactoryBackstage
           focusedElm.clear();
         });
       },
-      onHide: (comp) => {
+      onHide: (comp: AlloyComponent) => {
         findFocusedElem(comp.element, lazySink).fold(focusedElm.clear, focusedElm.set);
         runOnSinkElement((elem) => updateSinkVisibility(elem, false));
       },
@@ -225,7 +228,12 @@ const getDockingBehaviour = (editor: Editor, sharedBackstage: UiFactoryBackstage
         runOnSinkElement((elem) => Classes.remove(elem, [ visibility.transitionClass ]));
       },
       ...visibility
-    },
+    }
+  };
+
+  const optScroller = Options.getScrollableContainer(editor);
+  return Docking.config({
+    ...(false ? contextualDocking : {}),
     lazyViewport: (comp: AlloyComponent) => {
 
       return optScroller.fold(

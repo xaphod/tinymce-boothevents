@@ -126,16 +126,46 @@ export const InlineHeader = (
 
       // The float container/editor may not have been rendered yet, which will cause it to have a non integer based positions
       // so we need to round this to account for that.
-      const targetBounds = Boxes.box(targetElm);
-      const top = isPositionedAtTop() ?
-        Math.max(targetBounds.y - Height.get(container.element) + offset, 0) :
-        targetBounds.bottom;
+
+      // We are hard-coding the relationship of the box and scroller here
+      // for simplicity, and testing the approach
+      const targetBounds: { topMin: number; topMax: number; x: number } = Options.getScrollableContainer(editor).fold(
+        () => {
+          const box = Boxes.box(targetElm);
+          const topMin = Math.max(box.y - Height.get(container.element) + offset, 0);
+          const topMax = box.bottom;
+          return { topMin, topMax, x: box.x };
+        },
+        (scroller) => {
+          const targetBox = Boxes.box(targetElm);
+          const scrollBox = Boxes.box(scroller);
+
+          // The position for the box needs to be scrollY + something
+          // the something is going to be
+
+          // so this position is working for positionedAtTop, but not bottom
+          return {
+            topMin: targetBox.y - Height.get(container.element) + offset + scroller.dom.scrollTop - scrollBox.y,
+            topMax: targetBox.bottom + scroller.dom.scrollTop - scrollBox.y,
+            x: targetBox.x
+          };
+        }
+      );
+
+      console.log('initialising at top', targetBounds);
 
       Css.setAll(uiRefs.mainUi.outerContainer.element, {
         position: 'absolute',
-        top: Math.round(top) + 'px',
+        top: Math.round(
+          isPositionedAtTop() ? targetBounds.topMin : targetBounds.topMax
+        ) + 'px',
         left: Math.round(targetBounds.x) + 'px'
       });
+
+      // Clear the initial position, because we've intentionally moved it now.
+      if (uiRefs.mainUi.outerContainer.hasConfigured(Docking)) {
+        Docking.clearOriginal(uiRefs.mainUi.outerContainer);
+      }
     });
   };
 

@@ -1,11 +1,10 @@
-import { ApproxStructure, Assertions } from '@ephox/agar';
+import { ApproxStructure, Assertions, TestStore } from '@ephox/agar';
 import { beforeEach, context, describe, it } from '@ephox/bedrock-client';
 import { Optional } from '@ephox/katamari';
 import { assert } from 'chai';
 
 import { Bounds } from 'ephox/alloy/alien/Boxes';
 import * as GuiFactory from 'ephox/alloy/api/component/GuiFactory';
-import { TestStore } from 'ephox/alloy/api/testhelpers/TestHelpers';
 import * as Dockables from 'ephox/alloy/behaviour/docking/Dockables';
 import * as DockingStates from 'ephox/alloy/behaviour/docking/DockingState';
 import { DockingContext, DockingState } from 'ephox/alloy/behaviour/docking/DockingTypes';

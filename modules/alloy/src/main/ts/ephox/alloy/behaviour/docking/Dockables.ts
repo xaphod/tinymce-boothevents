@@ -1,12 +1,12 @@
 import { Arr, Fun, Optional, Optionals } from '@ephox/katamari';
-import { Class, Compare, Css, Height, SugarBody, SugarElement, SugarPosition, Width } from '@ephox/sugar';
+import { Class, Compare, Css, Height, Scroll, SugarBody, SugarElement, SugarPosition, Width } from '@ephox/sugar';
 
 import * as Boxes from '../../alien/Boxes';
 import * as OffsetOrigin from '../../alien/OffsetOrigin';
 import { AlloyComponent } from '../../api/component/ComponentApi';
 import { NuPositionCss } from '../../positioning/view/PositionCss';
 import * as DockingPositions from './DockingPositions';
-import { DockingContext, DockingState, InitialDockingPosition, MorphAdt, morphAdt, ScrollableBounds } from './DockingTypes';
+import { DockingContext, DockingMode, DockingState, InitialDockingPosition, MorphAdt, morphAdt, ScrollableBounds } from './DockingTypes';
 
 const appear = (component: AlloyComponent, contextualInfo: DockingContext): void => {
   const elem = component.element;
@@ -28,21 +28,23 @@ const isPartiallyVisible = (box: Boxes.Bounds, scrollableViewport: ScrollableBou
   box.y < scrollableViewport.bounds.bottom && box.bottom > scrollableViewport.bounds.y;
 
 const isTopCompletelyVisible = (box: Boxes.Bounds, viewport: Boxes.Bounds): boolean =>
-  box.y >= viewport.y;
+  box.y >= viewport.y && box.y < viewport.bottom;
 
 const isBottomCompletelyVisible = (box: Boxes.Bounds, viewport: Boxes.Bounds): boolean =>
-  box.bottom <= viewport.bottom;
+  box.bottom <= viewport.bottom && box.bottom > viewport.y;
 
 // This is used to retrieve the position before we moved to fixed.
-const getPrior = (elem: SugarElement<HTMLElement>, state: DockingState): Optional<{ originalBox: Boxes.Bounds } & InitialDockingPosition> =>
+const getPrior = (elem: SugarElement<HTMLElement>, state: DockingState): Optional<{ originalBox: Boxes.Bounds } & InitialDockingPosition> => {
 
-  state.getInitialPos().map(
+  const scroll = false ? Scroll.get() : { left: 0, top: 0 };
+
+  return state.getInitialPos().map(
     // Only supports position absolute.
     (dockingPos) => {
       return {
         originalBox: Boxes.bounds(
-          dockingPos.x,
-          dockingPos.y,
+          dockingPos.x + scroll.left,
+          dockingPos.y + scroll.top,
           Width.get(elem),
           Height.get(elem)
         ),
@@ -50,9 +52,18 @@ const getPrior = (elem: SugarElement<HTMLElement>, state: DockingState): Optiona
       };
     }
   );
+};
 
 // This is used to store the position before we moved to fixed.
 const storePrior = (elem: SugarElement<HTMLElement>, box: Boxes.Bounds, state: DockingState): void => {
+  // We don't want to consider the page scroll, if in a mode where the viewport
+  // is the factor. I'll hard-code to removing it for all things now
+  const scroll = false ? Scroll.get() : { left: 0, top: 0 };
+
+  const x = box.x - scroll.left;
+  const y = box.y - scroll.top;
+
+  console.log('Storing', box.x, box.y, x, y);
   state.setInitialPos({
     // These styles are only used, not because their values are considered, but because
     // they are used to determine whether those properties should be set (is it left or right aligned etc.)
@@ -62,8 +73,8 @@ const storePrior = (elem: SugarElement<HTMLElement>, box: Boxes.Bounds, state: D
     hasTopCss: Css.getRaw(elem, 'top').isSome(),
     hasBottomCss: Css.getRaw(elem, 'bottom').isSome(),
     positionCss: Css.get(elem, 'position') || 'static',
-    x: box.x,
-    y: box.y
+    x,
+    y
   });
 };
 
@@ -116,11 +127,21 @@ const revertToOriginal = (elem: SugarElement<HTMLElement>, box: Boxes.Bounds, sc
     }
   });
 
-const getDockingLocation = (dockingContext: DockingPositions.DockingPositionContext, state: DockingState, visibility: { top: boolean; bottom: boolean }): DockingPositions.DockingLocationDetails => {
+const getDockingLocation = (dockingContext: DockingPositions.DockingPositionContext, state: DockingState, visibility: { top: boolean; bottom: boolean }, optPreferredMode: Optional<DockingMode>): DockingPositions.DockingLocationDetails => {
+  // We want this one to preserve its current docking location, if possible. Imagine
+  // a situation where something is docked to the bottom, and it no longer fits at the
+  // top, it would just jump. This is more of an issue with forceDocking locations. So
+  // ideally (probably just like context toolbars), we want to keep the current position
+  // where possible. For now, we'll hack it.
   const dockingModes = state.getModes();
-  if (!visibility.top && Arr.contains(dockingModes, 'top')) {
+  if (optPreferredMode.exists((m) => m === 'bottom') && !visibility.bottom && Arr.contains(dockingModes, 'bottom')) {
+    console.log('preferred docking to bottom');
+    return DockingPositions.dockToBottom(dockingContext);
+  } else if (!visibility.top && Arr.contains(dockingModes, 'top')) {
+    console.log('best docking to top');
     return DockingPositions.dockToTop(dockingContext);
   } else if (!visibility.bottom && Arr.contains(dockingModes, 'bottom')) {
+    console.log('best docking to bottom');
     return DockingPositions.dockToBottom(dockingContext);
   } else {
     return {
@@ -177,6 +198,7 @@ const getDockingMorph = (
   }
 };
 const getMorph = (component: AlloyComponent, scrollableViewport: ScrollableBounds, state: DockingState): Optional<MorphAdt> => {
+  console.log('getMorph');
   const elem = component.element;
 
   // We are using adaptive docking if our viewport is scrollable
@@ -193,11 +215,6 @@ const getMorph = (component: AlloyComponent, scrollableViewport: ScrollableBound
   // position, we need to consider the scroll. This is because the original position might have had a different scroll value to the
   // current scroll. So to compare across all of these values, we need to include the scroll. QED.
   const viewportScroll = scrollableViewport.scroll.map((s) => s.offsets).getOrThunk(() => SugarPosition(0, 0));
-  const currentElemBox = Boxes.translate(
-    Boxes.box(elem),
-    viewportScroll.left,
-    viewportScroll.top
-  );
 
   // As above, we consider the viewport's scroll when getting the bounds of the viewport
   const viewportBounds = scrollableViewport.scroll.map(
@@ -218,18 +235,32 @@ const getMorph = (component: AlloyComponent, scrollableViewport: ScrollableBound
   // we can determine if we are in (2) based on the presence of that value.
   return getPrior(elem, state).fold(
     () => {
+      const currentElemBox = Boxes.translate(
+        Boxes.box(elem),
+        viewportScroll.left,
+        viewportScroll.top
+      );
+
       // We don't have an initial position yet, so we aren't docked. See if we need
       // to dock now, because the element has gone out of bounds?
       const topCompletelyVisible = isTopCompletelyVisible(currentElemBox, viewportBounds);
       const bottomCompletelyVisible = isBottomCompletelyVisible(currentElemBox, viewportBounds);
 
+      console.log('not yet docked', {
+        topCompletelyVisible,
+        boxY: currentElemBox.y,
+        viewportY: viewportBounds.y,
+        bottomCompletelyVisible
+      });
+
       const dockingContext = DockingPositions.deriveContext(elem, scrollableViewport);
       const dockingLocation = getDockingLocation(dockingContext, state, {
         top: topCompletelyVisible,
         bottom: bottomCompletelyVisible
-      });
+      }, Arr.head(state.getModes()));
 
       if (dockingLocation.location !== 'no-dock') {
+        console.log('fine ... let us dock', dockingLocation);
         // We are about to move from being in our "original" state, to our "docked" state, so we want to backup
         // the location, so that we can restore it later. Importantly, this location / box **must** consider
         // the current scroll, which currentElemBox already does.
@@ -238,6 +269,7 @@ const getMorph = (component: AlloyComponent, scrollableViewport: ScrollableBound
           (dockingPosAndBox) => getDockingMorph(dockingContext, dockingLocation, dockingPosAndBox)
         );
       } else {
+        console.log('not going to start docking now');
         return Optional.none();
       }
     },
@@ -249,7 +281,15 @@ const getMorph = (component: AlloyComponent, scrollableViewport: ScrollableBound
       const topCompletelyVisible = isTopCompletelyVisible(dockingPosAndBox.originalBox, viewportBounds);
       const bottomCompletelyVisible = isBottomCompletelyVisible(dockingPosAndBox.originalBox, viewportBounds);
 
+      console.log('already docked', {
+        topCompletelyVisible,
+        boxY: dockingPosAndBox.originalBox.y,
+        viewportY: viewportBounds.y,
+        bottomCompletelyVisible
+      });
+
       if (topCompletelyVisible && bottomCompletelyVisible) {
+        console.log('Restoring to original');
         // We can restore now.
         return revertToOriginal(elem, dockingPosAndBox.originalBox, scrollableViewport, state);
 
@@ -258,11 +298,18 @@ const getMorph = (component: AlloyComponent, scrollableViewport: ScrollableBound
       // is on, we stay in docked mode, but we adjust the position of our docked mode.
       } else if (adaptiveDocking) {
 
+        const optPreferredMode: Optional<DockingMode> = Css.getRaw(elem, 'bottom').map(
+          (_) => 'bottom' as DockingMode
+        ).orThunk(() => Optional.some('top'));
+        console.log('optPreferredMode', optPreferredMode);
+
         const dockingContext = DockingPositions.deriveContext(elem, scrollableViewport);
         const dockingLocation = getDockingLocation(dockingContext, state, {
           top: topCompletelyVisible,
           bottom: bottomCompletelyVisible
-        });
+        }, optPreferredMode);
+
+        console.log('Dock to', dockingLocation);
 
         // Because, we are in adaptive-docking mode, it is *critical* that we don't actually
         // save our current position. We want to keep the original position the position we were
@@ -270,6 +317,7 @@ const getMorph = (component: AlloyComponent, scrollableViewport: ScrollableBound
         // backing up the position.
         return getDockingMorph(dockingContext, dockingLocation, dockingPosAndBox);
       } else {
+        console.log('No docking for anyone');
         return Optional.none();
       }
     }
@@ -291,6 +339,5 @@ export {
   getMorphToOriginal,
   getDockingMorph,
 
-  storePrior,
   storePriorIfNone
 };
