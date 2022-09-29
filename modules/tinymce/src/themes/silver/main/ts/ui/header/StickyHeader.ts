@@ -248,7 +248,10 @@ const getDockingBehaviour = (editor: Editor, sharedBackstage: UiFactoryBackstage
           };
         },
         (scroller) => {
-          const bounds = Boxes.box(scroller);
+          console.log('restricting to window');
+          const bounds = Boxes.restrictToWindow(
+            Boxes.box(scroller)
+          );
           return {
             bounds,
             scroll: Optional.some({

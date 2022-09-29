@@ -31,7 +31,7 @@ export default (): void => {
     // gui.broadcastEvent(SystemEvents.windowScroll(), evt);
   });
 
-  const listenToContainerScroll = true;
+  const listenToContainerScroll = false;
   const hideWhenContextGone = false;
 
   const toggleButton = (boxId: number) => {
@@ -237,7 +237,9 @@ export default (): void => {
                           `scrollable-container-${boxId}`
                         ).getOrDie();
                         return {
-                          bounds: Boxes.box(scroller.element),
+                          bounds: Boxes.restrictToWindow(
+                            Boxes.box(scroller.element)
+                          ),
                           scroll: Optional.some({
                             element: scroller.element,
                             offsets: SugarPosition(
@@ -489,9 +491,7 @@ export default (): void => {
                           `scrollable-container-${boxId}-no-sink`
                         ).getOrDie();
                         return {
-                          bounds: Boxes.restrictToWindow(
-                            Boxes.box(scroller.element)
-                          ),
+                          bounds: Boxes.box(scroller.element),
                           scroll: Optional.some({
                             element: scroller.element,
                             offsets: SugarPosition(

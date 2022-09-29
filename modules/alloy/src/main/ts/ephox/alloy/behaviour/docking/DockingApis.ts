@@ -139,6 +139,7 @@ const forceDockWith = (component: AlloyComponent, config: DockingConfig, state: 
     (initialPos) => {
       const dockingContext = DockingPositions.deriveContext(component.element, scrollableBounds);
       const dockingLocation = dockAction(dockingContext);
+      console.log('dockingLocation', dockingLocation);
       const dockingPosAndBox = {
         originalBox: originalBoxWithScroll,
         ...initialPos

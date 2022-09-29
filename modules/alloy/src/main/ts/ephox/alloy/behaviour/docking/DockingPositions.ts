@@ -107,11 +107,13 @@ export const dockToTop = (context: DockingPositionContext): DockToTopDetails => 
         },
         (offsetParentBox) => {
           if (context.offsetParentIsScroll) {
-            console.log('offset parent is scroll');
+            // the window position is going to be blah and blah.
+            console.log('offset parent is scroll + adjustment');
+            const aboveWindowTop = context.viewport.y - context.getWinBox().y;
             return {
               location: 'top',
               position: 'absolute',
-              topY: scroll.top
+              topY: aboveWindowTop < 0 ? -aboveWindowTop + scroll.top : scroll.top
             };
           } else if (context.scrollContainsOffsetParent) {
             console.log('offset parent is contained by scroll');
