@@ -118,7 +118,8 @@ const setup = (extras: WindowManagerSetup): WindowManagerImpl => {
       );
 
       ModalDialog.show(dialog.dialog);
-      dialog.instanceApi.setData(initialData);
+
+      dialog.setInitialData(initialData);
       return dialog.instanceApi;
     };
 

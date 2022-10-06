@@ -1,8 +1,8 @@
 import { AlloyComponent, AlloyEvents, EventFormat, Replacing, SystemEvents, TabbarTypes, TabSection } from '@ephox/alloy';
-import { Arr, Singleton } from '@ephox/katamari';
+import { Arr, Optional, Singleton } from '@ephox/katamari';
 import { Css, Focus, Height, SelectorFind, SugarElement, SugarShadowDom, Traverse, Width } from '@ephox/sugar';
 
-import { formResizeEvent } from '../general/FormEvents';
+import { formResizeEvent, formSetInitialData } from '../general/FormEvents';
 
 export interface TabHeightMode {
   readonly extraEvents: AlloyEvents.AlloyEventKeyAndHandler<EventFormat>[];
@@ -81,18 +81,19 @@ const updateTabviewHeight = (dialogBody: SugarElement<HTMLElement>, tabview: Sug
 const getTabview = (dialog: SugarElement<HTMLElement>) =>
   SelectorFind.descendant<HTMLElement>(dialog, '[role="tabpanel"]');
 
-const smartMode = (allTabs: TabbarTypes.TabButtonWithViewSpec[]): TabHeightMode => {
+const smartMode = (allTabs: TabbarTypes.TabButtonWithViewSpec[], highestTab: Optional<string>): TabHeightMode => {
   const maxTabHeight = Singleton.value<number>();
 
   const extraEvents = [
-    AlloyEvents.runOnAttached((comp) => {
+    AlloyEvents.run(formSetInitialData, (comp) => {
       const dialog = comp.element;
       getTabview(dialog).each((tabview) => {
         Css.set(tabview, 'visibility', 'hidden');
 
         // Determine the maximum heights of each tab
         comp.getSystem().getByDom(tabview).toOptional().each((tabviewComp) => {
-          const heights = measureHeights(allTabs, tabview, tabviewComp);
+          const tabsToMeasure = highestTab.bind((label) => Arr.find(allTabs, (t) => t.value === label )).fold(() => allTabs, (t) => [ t ]);
+          const heights = measureHeights(tabsToMeasure, tabview, tabviewComp);
 
           // Calculate the maximum tab height and store it
           const maxTabHeightOpt = getMaxHeight(heights);
@@ -127,9 +128,11 @@ const smartMode = (allTabs: TabbarTypes.TabButtonWithViewSpec[]): TabHeightMode 
         const oldHeight = Css.getRaw(tabview, 'height').map((h) => parseInt(h, 10));
         Css.remove(tabview, 'height');
         Css.remove(tabview, 'flex-basis');
-        const newHeight = tabview.dom.getBoundingClientRect().height;
-        const hasGrown = oldHeight.forall((h) => newHeight > h);
+        // we should also round up/down the newHeight as we have done for oldHeight above
+        // This will prevent triggering updateTabHeight when the difference between the two are less than 1px
+        const newHeight = Math.round(tabview.dom.getBoundingClientRect().height);
 
+        const hasGrown = oldHeight.forall((h) => newHeight > h);
         if (hasGrown) {
           maxTabHeight.set(newHeight);
           updateTabviewHeight(dialog, tabview, maxTabHeight);
@@ -165,45 +168,7 @@ const naiveMode = (_allTabs: TabbarTypes.TabButtonWithViewSpec[]): TabHeightMode
   };
 };
 
-// Fixed the tab height to the height of a specified
-const prescribedMode = (allTabs: TabbarTypes.TabButtonWithViewSpec[], label: string): TabHeightMode => {
-  const maxTabHeight = Singleton.value<number>();
-
-  const extraEvents: AlloyEvents.AlloyEventKeyAndHandler<EventFormat>[] = [
-    AlloyEvents.runOnAttached((comp) => {
-      const dialog = comp.element;
-      getTabview(dialog).each((tabview) => {
-
-        // Determine the maximum heights of each tab
-        comp.getSystem().getByDom(tabview).toOptional().each((tabviewComp) => {
-          Arr.find(allTabs, (t) => t.value === label).each( (tab) => {
-            Css.set(tabview, 'visibility', 'hidden');
-
-            Replacing.set(tabviewComp, tab.view());
-            const rect = tabview.dom.getBoundingClientRect();
-            Replacing.set(tabviewComp, [ ]);
-            maxTabHeight.set(rect.height);
-
-            Css.remove(tabview, 'visibility');
-            showTab(allTabs, comp);
-
-            requestAnimationFrame(() => {
-              updateTabviewHeight(dialog, tabview, maxTabHeight);
-            });
-          });
-        });
-      });
-    })
-  ];
-
-  return {
-    extraEvents,
-    selectFirst: false
-  };
-};
-
 export {
   smartMode,
-  naiveMode,
-  prescribedMode
+  naiveMode
 };

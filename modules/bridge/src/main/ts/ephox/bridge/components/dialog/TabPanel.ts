@@ -15,7 +15,6 @@ export interface TabPanelSpec {
   type: 'tabpanel';
   tabs: TabSpec[];
   highestTabLabel?: string;
-  firstSelectedTabLabel?: string;
 }
 
 export interface Tab {
@@ -28,7 +27,6 @@ export interface TabPanel {
   type: 'tabpanel';
   tabs: Tab[];
   highestTabLabel: string;
-  firstSelectedTabLabel: string;
 }
 
 export const tabFields = [
@@ -41,7 +39,6 @@ export const tabPanelFields = [
   ComponentSchema.type,
   FieldSchema.requiredArrayOfObj('tabs', tabFields),
   FieldSchema.defaultedString('highestTabLabel', ''),
-  FieldSchema.defaultedString('firstSelectedTabLabel', '')
 ];
 
 export const tabPanelSchema = StructureSchema.objOf(tabPanelFields);

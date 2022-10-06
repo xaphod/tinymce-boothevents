@@ -1,8 +1,9 @@
-import { AlloyComponent, Composing, ModalDialog } from '@ephox/alloy';
+import { AlloyComponent, AlloyTriggers, Composing, ModalDialog } from '@ephox/alloy';
 import { Dialog, DialogManager } from '@ephox/bridge';
 import { Fun, Id, Optional } from '@ephox/katamari';
 
 import { UiFactoryBackstage } from '../../backstage/Backstage';
+import { formSetInitialData } from '../general/FormEvents';
 import { renderModalBody } from './SilverDialogBody';
 import * as SilverDialogCommon from './SilverDialogCommon';
 import { SilverDialogEvents } from './SilverDialogEvents';
@@ -12,6 +13,7 @@ import { DialogAccess, getDialogApi } from './SilverDialogInstanceApi';
 interface RenderedDialog<T extends Dialog.DialogData> {
   readonly dialog: AlloyComponent;
   readonly instanceApi: Dialog.DialogInstanceApi<T>;
+  readonly setInitialData: (data: any) => void;
 }
 
 const getDialogSizeClasses = (size: Dialog.DialogSize): string[] => {
@@ -81,9 +83,17 @@ const renderDialog = <T extends Dialog.DialogData>(dialogInit: DialogManager.Dia
   // TODO: Get the validator from the dialog state.
   const instanceApi = getDialogApi<T>(modalAccess, extra.redial, objOfCells);
 
+  const setInitialData = (data: any) => {
+    // The order of the below 2 lines needs to be preserved unless
+    // you would like to dive into a rabbit hole
+    AlloyTriggers.emit(modalAccess.getFormWrapper(), formSetInitialData);
+    instanceApi.setData(data);
+  };
+
   return {
     dialog,
-    instanceApi
+    instanceApi,
+    setInitialData
   };
 };
 

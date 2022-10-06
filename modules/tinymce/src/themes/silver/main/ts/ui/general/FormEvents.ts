@@ -49,6 +49,7 @@ const formBlockEvent = Id.generate('form-block');
 const formUnblockEvent = Id.generate('form-unblock');
 const formTabChangeEvent = Id.generate('form-tabchange');
 const formResizeEvent = Id.generate('form-resize');
+const formSetInitialData = Id.generate('form-set-inital-data');
 
 export {
   formChangeEvent,
@@ -59,5 +60,6 @@ export {
   formBlockEvent,
   formUnblockEvent,
   formTabChangeEvent,
-  formResizeEvent
+  formResizeEvent,
+  formSetInitialData
 };

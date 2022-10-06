@@ -3,7 +3,7 @@ import { StructureSchema } from '@ephox/boulder';
 import { Dialog, DialogManager } from '@ephox/bridge';
 import { Cell, Merger, Obj, Optional, Type } from '@ephox/katamari';
 
-import { formBlockEvent, formCloseEvent, formUnblockEvent } from '../general/FormEvents';
+import { formBlockEvent, formCloseEvent, formSetInitialData, formUnblockEvent } from '../general/FormEvents';
 import { bodyChannel, dialogChannel, footerChannel, titleChannel } from './DialogChannels';
 import { FooterState } from './SilverDialogFooter';
 
@@ -124,6 +124,7 @@ const getDialogApi = <T extends Dialog.DialogData>(
       root.getSystem().broadcastOn([ `${footerChannel}-${id}` ], dialogInit.internalDialog);
 
       instanceApi.setData(dialogInit.initialData as T);
+      AlloyTriggers.emit(access.getFormWrapper(), formSetInitialData);
     });
   };
 

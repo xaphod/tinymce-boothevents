@@ -64,7 +64,7 @@ export const renderTabPanel = (spec: TabPanelSpec, dialogData: Dialog.DialogData
                 mode: 'acyclic',
                 useTabstopAt: Fun.not(NavigableObject.isPseudoStop)
               }),
-
+              // These things are required because the value in the fields are preserved between tabs
               AddEventsBehaviour.config('TabView.form.events', [
                 AlloyEvents.runOnAttached(setDataOnForm),
                 AlloyEvents.runOnDetached(updateDataWithForm)
@@ -92,19 +92,13 @@ export const renderTabPanel = (spec: TabPanelSpec, dialogData: Dialog.DialogData
     };
   });
 
-  // default to smartMode, which also cause low performance
-  let tabMode = DialogTabHeight.smartMode(allTabs);
-  // Assign fixed height or variable height to the tabs
-  if (spec.highestTabLabel) {
-    tabMode = DialogTabHeight.prescribedMode(allTabs, spec.highestTabLabel);
-  }
+  const tabMode = DialogTabHeight.smartMode(allTabs, Optional.from(spec.highestTabLabel));
 
   return AlloyTabSection.sketch({
     dom: {
       tag: 'div',
       classes: [ 'tox-dialog__body' ]
     },
-
     onChangeTab: (section, button, _viewItems) => {
       const name = Representing.getValue(button);
       AlloyTriggers.emitWith(section, formTabChangeEvent, {
@@ -129,7 +123,6 @@ export const renderTabPanel = (spec: TabPanelSpec, dialogData: Dialog.DialogData
           tabClass: 'tox-tab',
           selectedClass: 'tox-dialog__body-nav-item--active'
         },
-
         tabbarBehaviours: Behaviour.derive([
           Tabstopping.config({ })
         ])
