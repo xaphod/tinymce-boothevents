@@ -84,10 +84,8 @@ const renderDialog = <T extends Dialog.DialogData>(dialogInit: DialogManager.Dia
   const instanceApi = getDialogApi<T>(modalAccess, extra.redial, objOfCells);
 
   const setInitialData = (data: any) => {
-    // The order of the below 2 lines needs to be preserved unless
-    // you would like to dive into a rabbit hole
-    AlloyTriggers.emit(modalAccess.getFormWrapper(), formSetInitialData);
     instanceApi.setData(data);
+    AlloyTriggers.emit(modalAccess.getFormWrapper(), formSetInitialData);
   };
 
   return {
