@@ -18,7 +18,7 @@ const open = (editor: Editor, database: EmojiDatabase): void => {
 
   const initialState: DialogData = {
     pattern: '',
-    results: emojisFrom(database.listAll(), '', Optional.some(300))
+    results: emojisFrom(database.listAll(), '', Optional.some(3000))
   };
 
   const currentTab = Cell(ALL_CATEGORY);
@@ -27,7 +27,7 @@ const open = (editor: Editor, database: EmojiDatabase): void => {
     const dialogData = dialogApi.getData();
     const category = currentTab.get();
     const candidates = database.listCategory(category);
-    const results = emojisFrom(candidates, dialogData[patternName], category === ALL_CATEGORY ? Optional.some(300) : Optional.none());
+    const results = emojisFrom(candidates, dialogData[patternName], category === ALL_CATEGORY ? Optional.some(3000) : Optional.none());
     dialogApi.setData({
       results
     });
@@ -58,7 +58,8 @@ const open = (editor: Editor, database: EmojiDatabase): void => {
         title: cat,
         name: cat,
         items: [ searchField, resultsField ]
-      }))
+      })),
+      highestTabLabel: 'All'
     };
     return {
       title: 'Emojis',
