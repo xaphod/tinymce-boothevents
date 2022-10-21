@@ -10,7 +10,7 @@ import * as SkinLoaded from './SkinLoaded';
 
 const loadStylesheet = (editor: Editor, stylesheetUrl: string, styleSheetLoader: StyleSheetLoader): Promise<void> => {
   // Ensure the stylesheet is cleaned up when the editor is destroyed
-  editor.on('remove', () => styleSheetLoader.unload(stylesheetUrl));
+  // editor.on('remove', () => styleSheetLoader.unload(stylesheetUrl));
   return styleSheetLoader.load(stylesheetUrl);
 };
 

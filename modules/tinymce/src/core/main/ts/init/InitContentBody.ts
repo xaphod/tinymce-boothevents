@@ -447,23 +447,29 @@ const contentBodyLoaded = (editor: Editor): void => {
 
   preInit(editor);
 
-  setupRtcThunk.fold(() => {
-    loadContentCss(editor).then(() => initEditorWithInitialContent(editor));
-  }, (setupRtc) => {
-    editor.setProgressState(true);
+  const flickerContent = false; // Change this to flicker the content inside the editor
 
-    loadContentCss(editor).then(() => {
-      setupRtc().then((_rtcMode) => {
-        editor.setProgressState(false);
-        initEditorWithInitialContent(editor);
-        Rtc.bindEvents(editor);
-      }, (err) => {
-        editor.notificationManager.open({ type: 'error', text: String(err) });
-        initEditorWithInitialContent(editor);
-        Rtc.bindEvents(editor);
+  if (flickerContent) {
+    setupRtcThunk.fold(() => {
+      loadContentCss(editor).then(() => initEditorWithInitialContent(editor));
+    }, (setupRtc) => {
+      editor.setProgressState(true);
+
+      loadContentCss(editor).then(() => {
+        setupRtc().then((_rtcMode) => {
+          editor.setProgressState(false);
+          initEditorWithInitialContent(editor);
+          Rtc.bindEvents(editor);
+        }, (err) => {
+          editor.notificationManager.open({ type: 'error', text: String(err) });
+          initEditorWithInitialContent(editor);
+          Rtc.bindEvents(editor);
+        });
       });
     });
-  });
+  } else {
+    initEditorWithInitialContent(editor);
+  }
 };
 
 const initContentBody = (editor: Editor, skipWrite?: boolean): void => {
@@ -475,25 +481,34 @@ const initContentBody = (editor: Editor, skipWrite?: boolean): void => {
   // Setup iframe body
   if (!skipWrite && !editor.inline) {
     const iframe = editor.iframeElement as HTMLIFrameElement;
-    const binder = DomEvent.bind(SugarElement.fromDom(iframe), 'load', () => {
-      binder.unbind();
+    const flickerUi = false; // Change this to flicker the entire UI
+    if (flickerUi) {
+      const binder = DomEvent.bind(SugarElement.fromDom(iframe), 'load', () => {
+        binder.unbind();
 
-      // Reset the content document, since using srcdoc will change the document
-      editor.contentDocument = iframe.contentDocument as Document;
+        // Reset the content document, since using srcdoc will change the document
+        editor.contentDocument = iframe.contentDocument as Document;
 
-      // Continue to init the editor
-      contentBodyLoaded(editor);
-    });
+        // Continue to init the editor
+        contentBodyLoaded(editor);
+      });
 
-    // TINY-8916: Firefox has a bug in its srcdoc implementation that prevents cookies being sent so unfortunately we need
-    // to fallback to legacy APIs to load the iframe content. See https://bugzilla.mozilla.org/show_bug.cgi?id=1741489
-    if (Env.browser.isFirefox()) {
+      // TINY-8916: Firefox has a bug in its srcdoc implementation that prevents cookies being sent so unfortunately we need
+      // to fallback to legacy APIs to load the iframe content. See https://bugzilla.mozilla.org/show_bug.cgi?id=1741489
+      if (Env.browser.isFirefox()) {
+        const doc = editor.getDoc();
+        doc.open();
+        doc.write(editor.iframeHTML as string);
+        doc.close();
+      } else {
+        iframe.srcdoc = editor.iframeHTML as string;
+      }
+    } else {
       const doc = editor.getDoc();
       doc.open();
       doc.write(editor.iframeHTML as string);
       doc.close();
-    } else {
-      iframe.srcdoc = editor.iframeHTML as string;
+      contentBodyLoaded(editor);
     }
   } else {
     contentBodyLoaded(editor);

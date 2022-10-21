@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import { Merger } from '@ephox/katamari';
+import { Global } from '@ephox/katamari';
 import { SugarElement } from '@ephox/sugar';
 
 import { Editor, RawEditorOptions, TinyMCE } from 'tinymce/core/api/PublicApi';
@@ -7,7 +7,6 @@ import { Editor, RawEditorOptions, TinyMCE } from 'tinymce/core/api/PublicApi';
 declare let tinymce: TinyMCE;
 
 export default (): void => {
-
   const makeSidebar = (ed: Editor, name: string, background: string, width: number) => {
     ed.ui.registry.addSidebar(name, {
       icon: 'comment',
@@ -171,6 +170,11 @@ export default (): void => {
     format_empty_lines: true
   };
 
-  tinymce.init(settings);
-  tinymce.init(Merger.deepMerge(settings, { inline: true, selector: 'div.tinymce' }));
+  const reinit = () => {
+    tinymce.get().forEach((ed) => ed.remove());
+    tinymce.init(settings);
+    // tinymce.init(Merger.deepMerge(settings, { inline: true, selector: 'div.tinymce' }));
+  };
+  reinit();
+  Global.reinit = reinit;
 };
