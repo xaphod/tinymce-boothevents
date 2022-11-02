@@ -52,116 +52,153 @@ def gitMerge(String primaryBranch) {
 }
 
 timestamps {
-  // TinyMCE builds need more RAM (especially eslint)
-  tinyPods.node([
-    resourceRequestMemory: '3.5Gi',
-    resourceLimitMemory: '3.5Gi'
-  ]) {
-    def props = readProperties(file: 'build.properties')
+  podTemplate(
+    cloud: "builds",
+    containers: [
+      containerTemplate(
+        name: 'node',
+        image: "public.ecr.aws/docker/library/node:lts",
+        runAsGroup: '1000',
+        runAsUser: '1000',
+        command: 'sleep',
+        args: 'infinity',
+        alwaysPullImage: true,
+        resourceRequestCpu: '6',
+        resourceRequestMemory: '7Gi',
+        resourceLimitCpu: '7.9',
+        resourceLimitMemory: '7Gi'
+      )
+    ],
+    workspaceVolume: emptyDirWorkspaceVolume(true)
+  ) {
+    node(POD_LABEL) {
+      container("jnlp") {
+        stage("checkout") {
+          tinyGit.addGitHubToKnownHosts()
+          checkout localBranch(scm)
+        }
+      }
 
-    String primaryBranch = props.primaryBranch
-    assert primaryBranch != null && primaryBranch != ""
-    def runAllTests = env.BRANCH_NAME == primaryBranch
+      container('node') {
+        def props = readProperties(file: 'build.properties')
 
-    stage("Merge") {
-      // cancel build if primary branch doesn't merge cleanly
-      gitMerge(primaryBranch)
-    }
+        String primaryBranch = props.primaryBranch
+        assert primaryBranch != null && primaryBranch != ""
+        def runAllTests = env.BRANCH_NAME == primaryBranch
 
-    def platforms = [
-      [ os: "windows", browser: "chrome" ],
-      [ os: "windows", browser: "firefox" ],
-      [ os: "windows", browser: "MicrosoftEdge" ],
-      [ os: "macos", browser: "safari" ],
-      [ os: "macos", browser: "chrome" ],
-      [ os: "macos", browser: "firefox" ]
-    ]
+        // Setup environment first
+        stage('environment') {
+          // Make yarn fallback to the npm registry otherwise we get publish errors
+          sh('yarn config --silent set registry https://registry.npmjs.org/')
 
-    def cleanAndInstall = {
-      echo "Installing tools"
-      exec("git clean -fdx modules scratch js dist")
-      yarnInstall()
-    }
+          // Setup git information
+          tinyGit.addAuthorConfig()
+          tinyGit.addGitHubToKnownHosts()
+        }
 
-    def processes = [:]
+        stage("Merge") {
+          // cancel build if primary branch doesn't merge cleanly
+          gitMerge(primaryBranch)
+        }
 
-    // Browser tests
-    for (int i = 0; i < platforms.size(); i++) {
-      def platform = platforms.get(i)
+        def platforms = [
+          [os: "windows", browser: "chrome"],
+          [os: "windows", browser: "firefox"],
+          [os: "windows", browser: "MicrosoftEdge"],
+          [os: "macos", browser: "safari"],
+          [os: "macos", browser: "chrome"],
+          [os: "macos", browser: "firefox"]
+        ]
 
-      def buckets = platform.buckets ?: 1
-      for (int bucket = 1; bucket <= buckets; bucket++) {
-        def suffix = buckets == 1 ? "" : "-" + bucket
+        def cleanAndInstall = {
+          echo "Installing tools"
+          exec("git clean -fdx modules scratch js dist")
+          yarnInstall()
+        }
 
-        // closure variable - don't inline
-        def c_bucket = bucket
+        def processes = [:]
 
-        def name = "${platform.os}-${platform.browser}${suffix}"
+        // Browser tests
+        for (int i = 0; i < platforms.size(); i++) {
+          def platform = platforms.get(i)
 
-        processes[name] = {
-          stage(name) {
-            node("bedrock-${platform.os}") {
-              echo("Bedrock tests for ${name}")
+          def buckets = platform.buckets ?: 1
+          for (int bucket = 1; bucket <= buckets; bucket++) {
+            def suffix = buckets == 1 ? "" : "-" + bucket
 
-              echo("Checking out code on build node: $NODE_NAME")
-              checkout(scm)
+            // closure variable - don't inline
+            def c_bucket = bucket
 
-              // windows tends to not have username or email set
-              tinyGit.addAuthorConfig()
-              gitMerge(primaryBranch)
+            def name = "${platform.os}-${platform.browser}${suffix}"
 
-              cleanAndInstall()
-              exec("yarn ci")
+            processes[name] = {
+              stage(name) {
+                node("bedrock-${platform.os}") {
+                  echo("Bedrock tests for ${name}")
 
-              echo("Running browser tests")
-              runBrowserTests(name, platform.browser, platform.os, c_bucket, buckets, runAllTests)
+                  echo("Checking out code on build node: $NODE_NAME")
+                  checkout(scm)
+
+                  // windows tends to not have username or email set
+                  tinyGit.addAuthorConfig()
+                  gitMerge(primaryBranch)
+
+                  cleanAndInstall()
+                  exec("yarn ci")
+
+                  echo("Running browser tests")
+                  runBrowserTests(name, platform.browser, platform.os, c_bucket, buckets, runAllTests)
+                }
+              }
             }
           }
         }
-      }
-    }
 
-    processes["headless-and-archive"] = {
-      stage("headless tests") {
-        // TODO: Work out how to run this stage... for now lets just use the old node
-        node('headless-macos') {
-          checkout(scm)
-          gitMerge(primaryBranch)
+        processes["headless-and-archive"] = {
+          stage("headless tests") {
+            // TODO: Work out how to run this stage... for now lets just use the old node
+            node('headless-macos') {
+              checkout(scm)
+              gitMerge(primaryBranch)
+              cleanAndInstall()
+              exec("yarn ci -s tinymce-rollup")
+
+              // chrome-headless tests run on the same node as the pipeline
+              // we are re-using the state prepared by `ci-all` below
+              // if we ever change these tests to run on a different node, rollup is required in addition to the normal CI command
+              echo "Platform: chrome-headless tests on node: $NODE_NAME"
+              runHeadlessTests(runAllTests)
+            }
+          }
+
+          if (env.BRANCH_NAME != primaryBranch) {
+            stage("Archive Build") {
+              exec("yarn tinymce-grunt prodBuild symlink:js")
+              archiveArtifacts artifacts: 'js/**', onlyIfSuccessful: true
+            }
+          }
+        }
+
+        stage("Install tools") {
           cleanAndInstall()
-          exec("yarn ci -s tinymce-rollup")
+        }
 
-          // chrome-headless tests run on the same node as the pipeline
-          // we are re-using the state prepared by `ci-all` below
-          // if we ever change these tests to run on a different node, rollup is required in addition to the normal CI command
-          echo "Platform: chrome-headless tests on node: $NODE_NAME"
-          runHeadlessTests(runAllTests)
+        stage("Type check") {
+          exec("yarn ci-all")
+        }
+
+        stage("Moxiedoc check") {
+          exec("yarn tinymce-grunt shell:moxiedoc")
+        }
+
+        return
+
+        stage("Run Tests") {
+          grunt("list-changed-headless list-changed-browser")
+          // Run all the tests in parallel
+          parallel processes
         }
       }
-
-      if (env.BRANCH_NAME != primaryBranch) {
-        stage("Archive Build") {
-          exec("yarn tinymce-grunt prodBuild symlink:js")
-          archiveArtifacts artifacts: 'js/**', onlyIfSuccessful: true
-        }
-      }
-    }
-
-    stage("Install tools") {
-      cleanAndInstall()
-    }
-
-    stage("Type check") {
-      exec("yarn ci-all")
-    }
-
-    stage("Moxiedoc check") {
-      exec("yarn tinymce-grunt shell:moxiedoc")
-    }
-
-    stage("Run Tests") {
-      grunt("list-changed-headless list-changed-browser")
-      // Run all the tests in parallel
-      parallel processes
     }
   }
 }
