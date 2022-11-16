@@ -12,7 +12,6 @@ import {
 } from '../../ui/types/FloatingToolbarButtonTypes';
 import * as Behaviour from '../behaviour/Behaviour';
 import { Coupling } from '../behaviour/Coupling';
-import { Focusing } from '../behaviour/Focusing';
 import { Keying } from '../behaviour/Keying';
 import { Positioning } from '../behaviour/Positioning';
 import { Receiving } from '../behaviour/Receiving';
@@ -64,14 +63,11 @@ const makeSandbox = (button: AlloyComponent, spec: FloatingToolbarButtonSpec, de
     detail.fetch().get((groups) => {
       setGroups(button, toolbar, detail, spec.layouts, groups);
       ariaControls.link(button.element);
-      Keying.focusIn(toolbar);
     });
   };
 
   const onClose = () => {
-    // Toggle and focus the button
     Toggling.off(button);
-    Focusing.focus(button);
     ariaControls.unlink(button.element);
   };
 
