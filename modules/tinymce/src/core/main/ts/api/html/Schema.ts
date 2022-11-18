@@ -486,7 +486,7 @@ const Schema = (settings: SchemaSettings = {}): Schema => {
   const boolAttrMap = createLookupTable('boolean_attributes', 'checked compact declare defer disabled ismap multiple nohref noresize ' +
     'noshade nowrap readonly selected autoplay loop controls allowfullscreen');
 
-  const nonEmptyOrMoveCaretBeforeOnEnter = 'td th iframe video audio object script code';
+  const nonEmptyOrMoveCaretBeforeOnEnter = 'td th iframe video audio object script code path';
   const nonEmptyElementsMap = createLookupTable('non_empty_elements', nonEmptyOrMoveCaretBeforeOnEnter + ' pre', voidElementsMap);
   const moveCaretBeforeOnEnterElementsMap = createLookupTable('move_caret_before_on_enter_elements', nonEmptyOrMoveCaretBeforeOnEnter + ' table', voidElementsMap);
 
